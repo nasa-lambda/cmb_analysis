@@ -252,8 +252,14 @@ def wigner3j_vect(tj1, tj2, tm1, tm2, verbose=False):
 
     Notes
     -----
-    Calculates the Wigner 3j symbols using recursion and normalization
+    Calculates the Wigner 3j symbols using recursion and normalization.
+    Input values are rounded to the nearest integer.
     '''
+    
+    tj1 = int(round(tj1))
+    tj2 = int(round(tj2))
+    tm1 = int(round(tm1))
+    tm2 = int(round(tm2))
 
     j1 = tj1 / 2.0
     j2 = tj2 / 2.0
@@ -323,8 +329,15 @@ def wigner6j_vect(tj1, tj2, tk1, tk2, tk3, verbose=False):
     Notes
     -----
     Calculates the Wigner 6j symbols using the same algorithm as the 3j
-    symbols, excepts uses a different recursion relation.
+    symbols, excepts uses a different recursion relation. Input values
+    are rounded to the nearest integer.
     '''
+    
+    tj1 = int(round(tj1))
+    tj2 = int(round(tj2))
+    tk1 = int(round(tk1))
+    tk2 = int(round(tk2))
+    tk3 = int(round(tk3))
 
     j1 = tj1 / 2.0
     j2 = tj2 / 2.0
@@ -404,9 +417,16 @@ def wigner3j(tj1, tj2, tj3, tm1, tm2, tm3, verbose=False):
 
     Notes
     -----
-    The input values are integers because the j and m values are normally
-    integers or half-integers
+    The input values are double the requested j, m values because they are
+    integers or half-integers. Code will round to the nearest integer.
     '''
+    
+    tj1 = int(round(tj1))
+    tj2 = int(round(tj2))
+    tj3 = int(round(tj3))
+    tm1 = int(round(tm1))
+    tm2 = int(round(tm2))
+    tm3 = int(round(tm3))
 
 #   Do testing that is not done in wigner3j_vect
     if tm1+tm2+tm3 != 0:
@@ -468,8 +488,16 @@ def wigner6j(tj1, tj2, tj3, tk1, tk2, tk3, verbose=False):
     Notes
     -----
     We input 2*j because j can be an integer or half-integer, so this
-    combination must be an integer.
+    combination must be an integer. Code will round to the nearest
+    integer.
     '''
+
+    tj1 = int(round(tj1))
+    tj2 = int(round(tj2))
+    tj3 = int(round(tj3))
+    tk1 = int(round(tk1))
+    tk2 = int(round(tk2))
+    tk3 = int(round(tk3))
 
     j1 = tj1 / 2.0
     j2 = tj2 / 2.0
@@ -554,6 +582,16 @@ def wigner9j(tj1, tj2, tj3, tj4, tj5, tj6, tj7, tj8, tj9, verbose=False):
     done to move the x in the sum to the upper right part of the three terms
     '''
 
+    tj1 = int(round(tj1))
+    tj2 = int(round(tj2))
+    tj3 = int(round(tj3))
+    tj4 = int(round(tj4))
+    tj5 = int(round(tj5))
+    tj6 = int(round(tj6))
+    tj7 = int(round(tj7))
+    tj8 = int(round(tj8))
+    tj9 = int(round(tj9))
+
     jmax1, jmin1, Nj1 = get_jrange_6j(tj1/2.0, tj9/2.0, tj8/2.0, tj4/2.0)
     sixJ1 = wigner6j_vect(tj1, tj9, tj8, tj4, tj7, verbose=verbose)
     jmax2, jmin2, Nj2 = get_jrange_6j(tj2/2.0, tj6/2.0, tj4/2.0, tj8/2.0)
@@ -607,9 +645,16 @@ def clebsch_gordon(tj1, tj2, tm1, tm2, tj, tm):
 
     Returns
     -------
-    cbcoeff: float
+    cgcoeff: float
         Clebsch-Gordon coefficient
     '''
+
+    tj1 = int(round(tj1))
+    tj2 = int(round(tj2))
+    tm1 = int(round(tm1))
+    tm2 = int(round(tm2))
+    tj = int(round(tj))
+    tm = int(round(tm))
 
     powval = (tm + tj1 - tj2) / 2.0
 
@@ -648,6 +693,13 @@ def gaunt(l1, l2, l3, m1, m2, m3):
         Gaunt coefficient \int Y_{l1, m1} Y_{l2, m2} Y_{l3, m3}
     '''
 
+    l1 = int(round(l1))
+    l2 = int(round(l2))
+    l3 = int(round(l3))
+    m1 = int(round(m1))
+    m2 = int(round(m2))
+    m3 = int(round(m3))
+
     threej_1 = wigner3j(2*l1, 2*l2, 2*l3, 0, 0, 0)
     threej_2 = wigner3j(2*l2, 2*l2, 2*l3, 2*m1, 2*m2, 2*m3)
 
@@ -685,6 +737,13 @@ def racah_v(tj1, tj2, tj, tm1, tm2, tm):
         RacahV(j1,j2,j2,m1,m2,m)
     '''
 
+    tj1 = int(round(tj1))
+    tj2 = int(round(tj2))
+    tj = int(round(tj))
+    tm1 = int(round(tm1))
+    tm2 = int(round(tm2))
+    tm = int(round(tm))
+
     powerval = (-tj1+tj2+tj) / 2.0
 
     WigVal = wigner3j(tj1, tj2, tj, tm1, tm2, tm)
@@ -720,6 +779,13 @@ def racah_w(ta, tb, tc, td, te, tf):
     racahw: float
         W(abcd;ef)
     '''
+
+    ta = int(round(ta))
+    tb = int(round(tb))
+    tc = int(round(tc))
+    td = int(round(td))
+    te = int(round(te))
+    tf = int(round(tf))
 
     powval = (ta+tb+tc+td) / 2.0
 
@@ -998,7 +1064,7 @@ def _norm_case_generic(j1, j2, m1, m2, m3=None, verbose=False,
     # in the 3 term part is 0 (i.e. num cancels). This continues the 
     # three term recursion when the ratio of the last two entries 
     # is small
-    if um[n+1]/um[n] < 1e-5:
+    if np.abs(um[n+1]/um[n]) < 1e-5:
         n += 1
         offset_r -= 1
         num = -Yjvect[n]*um[n] - Zjvect[n]*um[n-1]

@@ -80,7 +80,4 @@ class TestWigner9j(unittest.TestCase):
                                3221*np.sqrt(70)/(246960*np.sqrt(105)) - 365/(3528*np.sqrt(70)*np.sqrt(105)))
 
 if __name__=='__main__':
-    #unittest.main()
-    w3j = wc.wigner3j_vect(2*17, 2*6, (-2+2)*2, 2*2, verbose=True)
-    print w3j
-    
+    unittest.main()
