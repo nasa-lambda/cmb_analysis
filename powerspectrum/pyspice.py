@@ -1,3 +1,6 @@
+# pylint: disable=E1101, C0103, R0912, R0913, R0914, R0915, W0212
+
+
 '''This module implements the polspice code in Python. This mainly a port
 of the PolSpice code by Challinor, Chon, Colombi, Hivon, Prunet, and Szapudi
 to Python.'''
@@ -11,16 +14,16 @@ import cmb_analysis.util.wignercoupling as wc
 
 comm = MPI.COMM_WORLD
 
-def spice(map1, map2=None, window=None, mask=None, window2=None, mask2=None, 
+def spice(map1, map2=None, window=None, mask=None, window2=None, mask2=None,
           apodizesigma=0.0, apodizetype=0, thetamax=180.0, decouple=False,
           returnxi=False, remove_monopole=False, remove_dipole=False):
     '''This is an implementation of the PolSpice algorithm in Python.
-    
+
     Parameters
     ----------
     map1 : str or list
         Input filename to load or list of 3 Healpix maps (I, Q, U)
-        
+
     map2 : str or list, optional
         Input filename to load or list of 3 Healpix maps (I, Q, U)
 
@@ -34,7 +37,7 @@ def spice(map1, map2=None, window=None, mask=None, window2=None, mask2=None,
         Filename or array giving the weighted window to use for
         the second map. If not input, the same window is used as
         for the first map.
-    
+
     mask2 : str or numpy.ndarray, optional
         Filename or array giving the mask to use for the second
         map. If not input, the same window is used as for the
@@ -47,7 +50,7 @@ def spice(map1, map2=None, window=None, mask=None, window2=None, mask2=None,
         Type of apodization. 0 is a Gaussian window. 1 is a cosine window
 
     thetamax : float
-        maximum value of theta used in the integrals to calculate the 
+        maximum value of theta used in the integrals to calculate the
         power spectra from the correlation functions.
 
     decouple : bool
@@ -80,21 +83,21 @@ def spice(map1, map2=None, window=None, mask=None, window2=None, mask2=None,
     '''
 
     #If input is a string assume it is a filename
-    if type(map1) is str:
+    if isinstance(map1, str):
         try:
             map1 = H.read_map(map1, field=(0, 1, 2))
         except:
             raise ValueError('Input map should have I, Q, and U')
 
     have_map2 = False
-    if type(map2) is str:
+    if isinstance(map2, str):
         try:
             map2 = H.read_map(map2, field=(0, 1, 2))
         except:
             raise ValueError('Input map should have I, Q, and U')
         have_map2 = True
 
-    if type(window) is str:
+    if isinstance(window, str):
         window = H.read_map(window)
     elif window is None:
         window = np.ones_like(map1[0])
@@ -104,22 +107,22 @@ def spice(map1, map2=None, window=None, mask=None, window2=None, mask2=None,
 
     #Merge masks/windows
     window = window * mask
-   
+
     map1 = (map1[0]*window, map1[1]*window, map1[2]*window)
 
     if have_map2:
-        if type(window2) is str:
+        if isinstance(window2, str):
             window2 = H.read_map(window2)
         elif window2 is None:
             window2 = window
 
-        if type(mask2) is str:
+        if isinstance(mask2, str):
             mask2 = H.read_map(mask2)
         elif mask2 is None:
             mask2 = mask
 
         window2 = window2 * mask2
-       
+
         map2 = (map2[0]*window2, map2[1]*window2, map2[2]*window2)
 
     #Remove the monopole and dipole. Points outside the mask/window are set
@@ -147,7 +150,7 @@ def spice(map1, map2=None, window=None, mask=None, window2=None, mask2=None,
             map2[0][idx] = 0.0
             map2[1][idx] = 0.0
             map2[2][idx] = 0.0
-    
+
     if remove_dipole:
         idx = window == 0
         map1[0][idx] = H.UNSEEN
@@ -194,7 +197,7 @@ def spice(map1, map2=None, window=None, mask=None, window2=None, mask2=None,
         apfunction = _apodizefunction(x, apodizesigma, thetamax, apodizetype)
         for i in range(ncor):
             xi_final[i, :] *= apfunction
-    
+
     #compute the cls from xi
     cls_out = do_cl_from_xi(xi_final, w, x, decouple=decouple,
                             apodizesigma=apodizesigma,
@@ -209,7 +212,7 @@ def spice(map1, map2=None, window=None, mask=None, window2=None, mask2=None,
         return cls_out
 
 def _correct_xi_from_mask(xi, xi_mask):
-    '''Correct the amplitude of the correlation function due to the 
+    '''Correct the amplitude of the correlation function due to the
     presence of the mask/window
 
     Parameters
@@ -267,31 +270,31 @@ def _correct_xi_from_mask(xi, xi_mask):
     return xi_final
 
 def _apodizefunction(mu, fwhm_degrees, thetamax, typef=0):
-    '''Calculates an apodization function to apply to 
+    '''Calculates an apodization function to apply to
     the correlatin functions
-    
+
     Parameters
     ----------
     mu: array
         cos(thetas), where thetas is the angles at which the
         correlation function is calculated
-        
+
     fwhm_degrees: float
         The full width half max in degrees for the apodization
-        
+
     thetamax: float
         The maximum value of theta in the correlation function
-        
+
     typef: int
         Either 0 or 1. Decides between two different types of
         apodization
-    
+
     Returns
     ------
     output: array
         The apodized function
     '''
-    
+
     if fwhm_degrees <= 0:
         return np.ones_like(mu)
 
@@ -316,15 +319,14 @@ def _apodizefunction(mu, fwhm_degrees, thetamax, typef=0):
     return output
 
 def _get_legendre(x, ell, s=None, Plm12=None):
-    '''
-    Calculate the functions of Legendre polyonmials that are needed 
+    '''Calculate the functions of Legendre polyonmials that are needed
     for the correlation function transformations and used in several
     other functions.
 
     Parameters
     ----------
     x : array
-        An array of values of cos(theta) over which to calculate the 
+        An array of values of cos(theta) over which to calculate the
         Legengre polynomial functions
 
     ell : int
@@ -334,7 +336,7 @@ def _get_legendre(x, ell, s=None, Plm12=None):
         The values of sin(theta)
 
     Plm12 : array, optional
-        The values of P_{\ell-1}^2 at each value of x. If not input,
+        The values of P_{ell-1}^2 at each value of x. If not input,
         these will be calculated.
 
     Returns
@@ -365,7 +367,7 @@ def _get_legendre(x, ell, s=None, Plm12=None):
     Pl0 = scipy.special.lpmv(0, ell, x)
     Pl2 = scipy.special.lpmv(2, ell, x)
 
-    #It is faster to input P_(l-1)^2 than to calculate it when 
+    #It is faster to input P_(l-1)^2 than to calculate it when
     #x is a large array and there is a good chance this function
     #will be repeatedly called with increasing ell
     if Plm12 is None:
@@ -375,7 +377,7 @@ def _get_legendre(x, ell, s=None, Plm12=None):
     Gm = np.zeros_like(Pl0)
     Nl = 1.0
 
-    if (ell >= 2):
+    if ell >= 2:
         idx = (x == 1.0)
         Gp[idx] = 0.25
         Gm[idx] = 0.25
@@ -383,7 +385,7 @@ def _get_legendre(x, ell, s=None, Plm12=None):
         idx = (x == -1.0)
         Gp[idx] = Pl0[idx]*0.25
         Gm[idx] = -Pl0[idx]*0.25
-        
+
         idx = (np.abs(x) != 1.0)
         x = x[idx]
         s = s[idx]
@@ -395,7 +397,7 @@ def _get_legendre(x, ell, s=None, Plm12=None):
         t1 = (dl+m) * x/(s*s) * Plm12[idx]
 
         # ((l-4)/sin(theta)^2 + (l-1)*l*0.5) * P_\ell^2
-        t2 =  ( (dl-m*m)/(s*s) + (dl-1.0)*dl*0.5) * Pl2[idx]
+        t2 = ((dl-m*m)/(s*s) + (dl-1.0)*dl*0.5) * Pl2[idx]
 
         # (l-1) * cos(theta) * P_\ell^2
         t3 = (dl-1.0) * x * Pl2[idx]
@@ -410,7 +412,7 @@ def _get_legendre(x, ell, s=None, Plm12=None):
 
 def do_cl_from_xi(xi, w, x, decouple=False, apodizesigma=0.0,
                   thetamax=180.0, apodizetype=0):
-    '''Calculate the C_\ell from the real-space correlation functions
+    '''Calculate the C_l from the real-space correlation functions
 
     Parameters
     ----------
@@ -430,7 +432,7 @@ def do_cl_from_xi(xi, w, x, decouple=False, apodizesigma=0.0,
     Note
     ----
     This does the integrals by Gauss-Legendre quatrature, therefore the
-    real-space correlation functions must be input at the correct x values 
+    real-space correlation functions must be input at the correct x values
     along with the correct weights to use.
     '''
 
@@ -441,14 +443,14 @@ def do_cl_from_xi(xi, w, x, decouple=False, apodizesigma=0.0,
         #ncl = len(xi)
         ncl = 6
         nell = len(xi[0])
-   
+
     cls = np.empty([ncl, nell])
     Fl = np.empty(nell)
 
     nfact = 2
 
     Pl2 = np.zeros_like(x)
-   
+
     #Calculation of the non ell dependent part of the integrand of
     #Equation 65
     apfunction = _apodizefunction(x, apodizesigma, thetamax, apodizetype)
@@ -480,7 +482,7 @@ def do_cl_from_xi(xi, w, x, decouple=False, apodizesigma=0.0,
             cls[3, i] = np.sum(Nl*Pl2*nfact*w*xi[3, :] * np.pi)
             cls[4, i] = np.sum(Nl*Pl2*nfact*w*xi[4, :] * np.pi)
             cls[5, i] = np.sum(wx*(Gp-Gm))
- 
+
     cross_correction = False
     if cross_correction:
         fact = _correct_TE(apfunction, x, w)
@@ -494,40 +496,40 @@ def do_cl_from_xi(xi, w, x, decouple=False, apodizesigma=0.0,
 
 def get_xi_from_cl(cls, thetas=None, return_leggauss=False, thetamax=180.0):
     '''Calculate of the real space correlation function from the C_ls.
-    
+
     Parameters
     ----------
     cls : array
         Input Cl power spectra
-        
+
     thetas : array, optional
         Angles at which to calculate the correlation function. If not input,
-        they will be calculated at the points needed for Legendre-Gauss 
+        they will be calculated at the points needed for Legendre-Gauss
         quadrature
-        
+
     return_leggauss : bool
         Whether to additionally return the x values and weights for
         Legendre-Gauss quadrature. If set to True, the input thetas is
         ignored
-        
+
     thetamax : float
-        Maximum value of theta to calculate for the correlation function. 
-        Modified the Legendre-Gauss quadrature x values and weights. 
+        Maximum value of theta to calculate for the correlation function.
+        Modified the Legendre-Gauss quadrature x values and weights.
         Ignored if thetas is input and return_leggauss is False.
-        
+
     Returns
     -------
     thetas_out : array
-        The angles at which the correlation function is calculated. Same 
+        The angles at which the correlation function is calculated. Same
         as the input thetas if it is input and return_leggauss is False.
-        
+
     xi : array
         The calculated correlation function
-        
+
     w : array, optional
         The weights needed for Legendre-Gauss quadrature. Output if
         return_leggauss is True
-        
+
     x : array, optional
         cos(thetas). Output if return_leggauss is True
     '''
@@ -541,14 +543,14 @@ def get_xi_from_cl(cls, thetas=None, return_leggauss=False, thetamax=180.0):
         nell = len(cls[0])
 
     ell_vect = np.arange(nell)
- 
+
     if return_leggauss or thetas is None:
         ntheta = nell
         x, w = np.polynomial.legendre.leggauss(ntheta)
         xmin = np.cos(np.radians(thetamax))
         xmax = 1.0
         x = (xmax-xmin)/2.0 * x + (xmax+xmin)/2.0
-        w = (xmax-xmin)/2.0 * w   
+        w = (xmax-xmin)/2.0 * w
 
         thetas = np.arccos(x)
     else:
@@ -557,10 +559,9 @@ def get_xi_from_cl(cls, thetas=None, return_leggauss=False, thetamax=180.0):
     x = np.cos(thetas)
 
     Pl2 = np.zeros_like(x)
-    
+
     xi = np.zeros([ncl, ntheta])
 
-    m = 2
     for ell in ell_vect:
         Pl0, Pl2, Gp, Gm, Nl = _get_legendre(x, ell, Plm12=Pl2)
 
@@ -589,7 +590,7 @@ def get_xi_from_cl(cls, thetas=None, return_leggauss=False, thetamax=180.0):
         return thetas, xi
 
 def _correct_TE(apfunction, x, w):
-    '''Calculate an amplitude correction of the TE cross-correlation 
+    '''Calculate an amplitude correction of the TE cross-correlation
     due to the apodization of the correlation function.
 
     Parameters
@@ -610,7 +611,7 @@ def _correct_TE(apfunction, x, w):
         TE correction function due to the fact that the correlation function
         is apodized
     '''
- 
+
     nell = len(apfunction)
     lmax = nell - 1
 
@@ -633,7 +634,7 @@ def _correct_TE(apfunction, x, w):
             #runs from l3min to l3max
             wigner00 = wc.wigner3j_vect(2*l1, 2*l2, 2*0, 2*0)
             wigner22 = wc.wigner3j_vect(2*l1, 2*l2, 2*2, -2*2)
-            
+
             if l3max > lmax:
                 tmp = lmax-l3max
                 wigner00 = wigner00[:tmp]
@@ -644,7 +645,7 @@ def _correct_TE(apfunction, x, w):
 
             kcross[l1, l2] *= 2*l2 + 1
 
-            if (l2 != l1):
+            if l2 != l1:
                 kcross[l2, l1] *= 2*l1 + 1
 
     kcross = comm.allreduce(kcross)
@@ -654,7 +655,7 @@ def _correct_TE(apfunction, x, w):
     return fact
 
 def _update_xi(xi, mu, thetamax_degrees, cl, cl_mask=None):
-    '''This replaces the polarized elements of xi with versions that only 
+    '''This replaces the polarized elements of xi with versions that only
     depend on E or B polarization, but not both.
 
     Note
@@ -692,11 +693,11 @@ def _update_xi(xi, mu, thetamax_degrees, cl, cl_mask=None):
 
 def _cplus(x, cl, cl_mask=None):
     '''Calculate xi_+ corelation function.
-    
+
     Note
     ----
     This is Eqs 17 and 9.'''
-    
+
     if len(np.shape(cl)) != 2:
         raise ValueError("Input Cl must be 2d array (ncl, nell)")
 
@@ -706,7 +707,7 @@ def _cplus(x, cl, cl_mask=None):
     Pl2 = 0.0
 
     nell = len(cl[0])
-    
+
     ell_vect = np.arange(nell)
     c_plus = np.zeros_like(x)
     cmask = np.zeros_like(x)
@@ -735,7 +736,6 @@ def _cplus(x, cl, cl_mask=None):
 
 def _cumul_simpson(theta, cl, nmax, thetamax, cl_mask=None):
     '''
-    
     Notes
     -----
     This calculates the two integrals in Eq. 90
@@ -760,7 +760,7 @@ def _cumul_simpson(theta, cl, nmax, thetamax, cl_mask=None):
         if lastn[j] != 0:
             sum1[j] = scipy.integrate.simps(ftemp1[:lastn[j]+1], dx=step)
             sum2[j] = scipy.integrate.simps(ftemp2[:lastn[j]+1], dx=step)
-    
+
     #Since beta[lastn[j]] is not exactly theta[j], we apply the basic Simpson's rule on
     #the small interval between those two values
     step2 = (theta - step*lastn) / 2.0
@@ -777,9 +777,8 @@ def _cumul_simpson(theta, cl, nmax, thetamax, cl_mask=None):
 
     endpoint = step2*(ftemp1[lastn] + 4.0 * int1_0 + int1_1) / 3.0
     sum1 += endpoint
-    
+
     endpoint = step2*(ftemp2[lastn] + 4.0 * int2_0 + int2_1) / 3.0
     sum2 += endpoint
 
     return sum1, sum2
-
