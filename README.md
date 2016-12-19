@@ -9,6 +9,10 @@ There are several Python modules needed in order to run this code. They are
 * Healpy
 * Mpi4py
 
+In addition, the location of the cmb_analysis directory needs to be added to your PYTHONPATH environment variable.
+
 ## Contact ##
 
 Nathan Miller - nathan.j.miller@nasa.gov
+
+Copyright © 2016 United States Government as represented by the Administrator of the National Aeronautics and Space Administration. All Rights Reserved.

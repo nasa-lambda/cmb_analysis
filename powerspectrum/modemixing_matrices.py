@@ -1,5 +1,8 @@
 # pylint: disable=E1101, C0103, R0912, R0913, R0914, R0915, W0212
 
+#Copyright © 2016 United States Government as represented by the Administrator
+#of the National Aeronautics and Space Administration. All Rights Reserved.
+
 '''
 Calculation of modemixing matrices using Python application of these
 matrices to Cls. Parallelization is done using MPI.
