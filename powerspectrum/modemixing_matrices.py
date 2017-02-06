@@ -1,6 +1,6 @@
 # pylint: disable=E1101, C0103, R0912, R0913, R0914, R0915, W0212
 
-#Copyright © 2016 United States Government as represented by the Administrator
+#Copyright 2016 United States Government as represented by the Administrator
 #of the National Aeronautics and Space Administration. All Rights Reserved.
 
 '''
@@ -164,6 +164,7 @@ def apply_coupling(cls_in, Mscal, Mpol, Mcross, inverse=True):
         TT, EE, BB, TE, EB, TB = 0, 1, 2, 3, 4, 5
         doV = False
     elif ncls == 4:
+        doV = False
         TT, EE, BB, TE = 0, 1, 2, 3
 
     cls_out = np.empty([ncls, nell])
@@ -202,7 +203,9 @@ def apply_coupling(cls_in, Mscal, Mpol, Mcross, inverse=True):
 
     cls_out[EE, :] = polvect_out[0:nell]
     cls_out[BB, :] = polvect_out[nell:2*nell]
-    cls_out[EB, :] = polvect_out[2*nell:]
+
+    if ncls > 4:
+        cls_out[EB, :] = polvect_out[2*nell:]
 
     crossvect = np.zeros(2*nell)
     crossvect[:nell] = cls_in[TE]
@@ -212,7 +215,9 @@ def apply_coupling(cls_in, Mscal, Mpol, Mcross, inverse=True):
     crossvect_out = np.dot(B_cross, crossvect)
 
     cls_out[TE, :] = crossvect_out[:nell]
-    cls_out[TB, :] = crossvect_out[nell:]
+
+    if ncls > 4:
+        cls_out[TB, :] = crossvect_out[nell:]
 
     if doV:
         crossvect[:nell] = cls_in[EV]
