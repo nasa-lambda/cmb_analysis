@@ -95,7 +95,7 @@ class TestModeMixing(unittest.TestCase):
     
     def test_compare_purecls(self):
 
-        print("Testing pure"
+        print("Testing pure")
     
         nside = 32
         window_scal = construct_window(nside, -28.0, 57.0)
