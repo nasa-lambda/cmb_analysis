@@ -343,7 +343,7 @@ def _calc_Mscal(comm, wEBlm, lmax=None, verbose=True):
 
     for l1 in range(2+rank, lmax+1, size):
         if verbose:
-            print "Scal l1 = ", l1
+            print("Scal l1 = ", l1)
         for l2 in range(2, lmax+1):
             l3min = np.abs(l1-l2)
             l3max = np.abs(l1+l2)
@@ -398,7 +398,7 @@ def _calc_Mpol(comm, wEBlm, lmax=None, cl_type='pseudo', verbose=True):
 
     for l1, fact0, fact1 in zip(l1_vals, fact0s, fact1s):
         if verbose:
-            print "Pol l1 = ", l1
+            print("Pol l1 = ", l1)
 
         for l2 in range(2, lmax+1):
             l3min = np.abs(l1-l2)
@@ -592,7 +592,7 @@ def _calc_Mcross(comm, wEBlm, lmax=None, cl_type='pseudo', verbose=True):
 
     for l1, fact0, fact1 in zip(l1_vals, fact0s, fact1s):
         if verbose:
-            print "Cross l1 = ", l1
+            print("Cross l1 = ", l1)
 
         for l2 in range(2, lmax+1):
             l3min = np.abs(l1-l2)
