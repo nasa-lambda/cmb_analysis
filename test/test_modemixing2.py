@@ -68,7 +68,7 @@ def construct_cls(cltype, window_scal):
     
     cls_avg = None
     for i in range(rank, niter, size):
-        print "Iter: ", i
+        print("Iter: ", i)
         cmbmap = H.synfast(true_cls, nside, new=True, verbose=False)
         
         if cltype is 'pseudo':
@@ -95,7 +95,7 @@ class TestModeMixing(unittest.TestCase):
     
     def test_compare_purecls(self):
 
-        print "Testing pure"
+        print("Testing pure")
     
         nside = 32
         window_scal = construct_window(nside, -28.0, 57.0)
@@ -131,7 +131,7 @@ class TestModeMixing(unittest.TestCase):
         
 #    def test_compare_pseudocls(self):
 #        
-#        print "Testing pseudo"
+#        print("Testing pseudo")
 #
 #        cls = construct_cls('pseudo')
 #
@@ -163,7 +163,7 @@ class TestModeMixing(unittest.TestCase):
 #         
 #    def test_compare_hybridcls(self):
 #        
-#        print "Testing hybrid"
+#        print("Testing hybrid")
 #
 #        cls = construct_cls('hybrid')
 #        
