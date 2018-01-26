@@ -36,9 +36,18 @@ class TestCobePix(unittest.TestCase):
 
     def test_coord2pix(self):
 
+        #One test for each of the different values for nface
         pix = coord2pix(1.47, 20.465, coord='geocentrictrueecliptic', res=6)
         np.testing.assert_equal(pix, 1834)
         pix = coord2pix(73.467, -45.245, coord='geocentrictrueecliptic', res=9)
         np.testing.assert_equal(pix, 384496)
+        pix = coord2pix(180.1, -10.0, coord='E', res=6)
+        np.testing.assert_equal(pix, 3488)
+        pix = coord2pix(-90.1, -25.3, coord='E', res=6)
+        np.testing.assert_equal(pix, 4221)
+        pix = coord2pix(270.2, 82.7, coord='E', res=6)
+        np.testing.assert_equal(pix, 251)
+        pix = coord2pix(92.8, 27.3, coord='E', res=6)
+        np.testing.assert_equal(pix, 2953)
 
 
