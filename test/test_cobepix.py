@@ -49,5 +49,8 @@ class TestCobePix(unittest.TestCase):
         np.testing.assert_equal(pix, 251)
         pix = coord2pix(92.8, 27.3, coord='E', res=6)
         np.testing.assert_equal(pix, 2953)
+        pix = coord2pix([270.2, 92.8], [82.7, 27.3], coord='E', res=6)
+        np.testing.assert_equal(pix[0], 251)
+        np.testing.assert_equal(pix[1], 2953)
 
 
