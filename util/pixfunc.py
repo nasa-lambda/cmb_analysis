@@ -1,21 +1,42 @@
+# pylint: disable=E1101, C0103, R0912, R0913, R0914, R0915, W0212
+
+'''This module provides functions to convert between sky coordinates and
+COBE pixel numbers. This is adapted from the IDL code written in support
+of COBE data analysis.
+'''
+
 import numpy as np
 from astropy.coordinates import SkyCoord
 
 def coord2pix(lon, lat=None, coord='C', res='F'):
-
     '''
-    Get the COBE pixel closest to the input lonitude/latitude
-    res = 'm' where m <= 15 (res m)
-    'F' = 'D' = 6 (res 6)
-    'B' = 9 (res 9)
+    Get the COBE pixel closest to the input longitude/latitude
+
+    Parameters
+    ----------
+    lon : float, array-like shape (Npts,)
+        either longitude (ra) or SkyCoord object (or array of these)
+    lat : float, array-like shape (Npts,), optional
+        latitude (dec) or array of latitudes. if present, lon is longitude
+    coord : string, optional
+        coordinate system of the input longitude, latitude. Default is celestial coordinates
+        (icrs). Ignored if the input coordinates are SkyCoord objects
+    res : string or int, optional
+        COBE pixelization resolution. 'F' (FIRAS) = 'D' (DMR) = 6, 'B' (DIRBE) = 9.
+        Default is 6. Resolution <= 15
+
+    Returns
+    -------
+    pix : int, array-like shape (Npts,)
+        output pixel number or array of pixel numbers in COBE pixelization
     '''
 
-    if res is 'F' or res is 'D':
+    if res == 'F' or res == 'D':
         res = 6
-    elif res is 'B':
+    elif res == 'B':
         res = 9
 
-    
+
     #I believe this is the relevant code from coorconv.pro that I need to follow
     #uvec = cconv(input*1.,-1) #convert to unit vector
     #uvec = skyconv(uvec, inco=in_coord, outco='E') #convert to ecliptic
@@ -54,16 +75,32 @@ def coord2pix(lon, lat=None, coord='C', res='F'):
 
     if npts == 1:
         return output[0]
-    else:
-        return output
+
+    return output
 
 def _uv2pix(c, res=6):
+    '''Returns pixel number given unit vector pointing to center
+    of pixel resolution of the cude
+
+    Parameters
+    ----------
+    c : astropy.coordinates.SkyCoord or array-like (Npts, )
+        sky coordinate system in cartesian coordinates
+
+    res : int, optional
+        resolution of output pixel numbers, default=6
+
+    Returns
+    -------
+    pixel : int or array-like (Npts, )
+        pixel numbers
+    '''
 
     npts = np.size(c)
 
     res1 = res - 1
     num_pix_side = 2.0**res1
-    num_pix_face = num_pix_side**2
+    #num_pix_face = num_pix_side**2
 
     face, x, y = _axisxy(c)
 
@@ -86,6 +123,11 @@ def _uv2pix(c, res=6):
 
 def _axisxy(c):
     '''Converts position into nface number (0-5) and x, y in range 0-1
+
+    Parameters
+    ----------
+    c : array-like (Npts, ) of astropy.coordinates.SkyCoord objects
+        sky position in cartesian coordinates
     '''
 
     n = np.size(c)
@@ -163,9 +205,23 @@ def _axisxy(c):
 
 
 def _fij2pix(fij, res):
-    '''This function takes an n by 3 element vector containing the face, column, and row number
-    (the latter two within the face) of a pixel and converts it into an n-element pixel array
-    for a given resolution
+    '''This function takes an n by 3 element vector containing the
+    face, column, and row number (the latter two within the face) of
+    a pixel and converts it into an n-element pixel array for a given
+    resolution
+
+    Parameters
+    ----------
+    fij : array-like (Npts,)
+        array of face, column, row numbers
+
+    res : int
+        COBE pixelization resolution for output pixel numbers
+
+    Returns
+    -------
+    pixel : array-like (Npts,)
+        COBE pixel numbers
     '''
 
     n = len(fij)
@@ -188,8 +244,6 @@ def _fij2pix(fij, res):
     return np.array(pixel, dtype=np.int)
 
 def _incube(alpha, beta):
-    '''I have no idea what this does
-    '''
 
     gstar = 1.37484847732
     g = -0.13161671474
@@ -203,7 +257,7 @@ def _incube(alpha, beta):
     c02 = 0.106959469314
     d0 = 0.0759196200467
     d1 = -0.0217762490699
-    r0 = 0.577350269
+    #r0 = 0.577350269
     aa = alpha**2
     bb = beta**2
     a4 = aa**2
@@ -221,19 +275,34 @@ def _incube(alpha, beta):
     return x, y
 
 def pix2coord(pixel, res, coord='C'):
-    '''Convert COBE quad-cube pixel number to astropy coordinates (lon/lat, ra/dec, etc.)
+    '''Convert COBE quad-cube pixel number to sky coordinates (lon/lat, ra/dec, etc.)
+
+    Parameters
+    ----------
+    pixel : int, array-like shape (Npts,)
+        pixel number of array of pixel numbers
+    res : int
+        resolution of COBE pixelization. 'F'='D'=6, 'B'=9
+    coord : string, optional
+        coordinate system of output coordinates. Either in Healpy or Astropy coordinate string.
+        Default is celestial coordinate system
+
+    Returns
+    -------
+    c : astropy.coordinates.SkyCoord or array-like (Npts,)
+        sky coordinates of the input pixel numbers
     '''
 
-    if res is 'F' or res is 'D':
+    if res == 'F' or res == 'D':
         res = 6
-    elif res is 'B':
+    elif res == 'B':
         res = 9
 
-    if coord is 'C':
+    if coord == 'C':
         coord = 'icrs'
-    elif coord is 'G':
+    elif coord == 'G':
         coord = 'galactic'
-    elif coord is 'E':
+    elif coord == 'E':
         coord = 'geocentrictrueecliptic'
 
     npts = np.size(pixel)
@@ -254,7 +323,8 @@ def pix2coord(pixel, res, coord='C'):
     if npts > 1:
         c = []
         for i in range(npts):
-            c.append(SkyCoord(lon_lat[i, 0], lon_lat[i, 1], frame='geocentrictrueecliptic', unit='deg'))
+            c.append(SkyCoord(lon_lat[i, 0], lon_lat[i, 1], frame='geocentrictrueecliptic',
+                              unit='deg'))
             c[i] = getattr(c[i], coord)
     else:
         c = SkyCoord(lon_lat[0, 0], lon_lat[0, 1], frame='geocentrictrueecliptic', unit='deg')
@@ -263,9 +333,23 @@ def pix2coord(pixel, res, coord='C'):
     return c
 
 def _pix2fij(pixel, res):
-    '''This function takes a n-element pixel array and generates an nx3 element array
-    containing the corresponding face, column, and row number (the latter two within
-    the face)
+    '''This function takes a n-element pixel array
+    and generates an nx3 element array containing the
+    corresponding face, column, and row number (the latter
+    two within the face)
+
+    Parameters
+    ----------
+    pixel : float or array-like (Npts,)
+        pixel number array
+
+    res : int
+        COBE pixelization resolution
+
+    Returns
+    -------
+    fij : array-like (Npts, 3)
+        face, column, row for each pixel
     '''
 
     n = np.size(pixel)
@@ -299,61 +383,95 @@ def _pix2fij(pixel, res):
     return output
 
 def _fwdcube(x, y):
-    '''Based on polynomial fit found using fcfit.for. Taken from forward_cube.for'''
+    '''Based on polynomial fit found using fcfit.for. Taken
+    from forward_cube.for
+
+    Parameters
+    ----------
+    x: float or array-like (Npts,)
+        database coordinate
+
+    y: float or array-like (Npts,)
+        databse coordinate
+
+    Returns
+    -------
+    xi : float or array-like (Npts,)
+        tangent plane coordinate
+
+    eta : float or array-like (Npts,)
+        tangent plane coordinate
+    '''
 
     p = np.empty(29)
 
-    p[1] =  -0.27292696
-    p[2] =  -0.07629969
-    p[3] =  -0.02819452
-    p[4] =  -0.22797056
-    p[5] =  -0.01471565
-    p[6] =   0.27058160
-    p[7] =   0.54852384
-    p[8] =   0.48051509
-    p[9] =  -0.56800938
+    p[1] = -0.27292696
+    p[2] = -0.07629969
+    p[3] = -0.02819452
+    p[4] = -0.22797056
+    p[5] = -0.01471565
+    p[6] = 0.27058160
+    p[7] = 0.54852384
+    p[8] = 0.48051509
+    p[9] = -0.56800938
     p[10] = -0.60441560
     p[11] = -0.62930065
     p[12] = -1.74114454
-    p[13] =  0.30803317
-    p[14] =  1.50880086
-    p[15] =  0.93412077
-    p[16] =  0.25795794
-    p[17] =  1.71547508
-    p[18] =  0.98938102
+    p[13] = 0.30803317
+    p[14] = 1.50880086
+    p[15] = 0.93412077
+    p[16] = 0.25795794
+    p[17] = 1.71547508
+    p[18] = 0.98938102
     p[19] = -0.93678576
     p[20] = -1.41601920
-    p[21] = -0.63915306 
-    p[22] =  0.02584375
+    p[21] = -0.63915306
+    p[22] = 0.02584375
     p[23] = -0.53022337
     p[24] = -0.83180469
-    p[25] =  0.08693841 
-    p[26] =  0.33887446
-    p[27] =  0.52032238
-    p[28] =  0.14381585
+    p[25] = 0.08693841
+    p[26] = 0.33887446
+    p[27] = 0.52032238
+    p[28] = 0.14381585
 
-    xx=x*x
-    yy=y*y
+    xx = x*x
+    yy = y*y
 
     xi = x*(1.+(1.-xx)*( \
          p[1]+xx*(p[2]+xx*(p[4]+xx*(p[7]+xx*(p[11]+xx*(p[16]+xx*p[22]))))) + \
-         yy*( p[3]+xx*(p[5]+xx*(p[8]+xx*(p[12]+xx*(p[17]+xx*p[23])))) + \
-         yy*( p[6]+xx*(p[9]+xx*(p[13]+xx*(p[18]+xx*p[24]))) + \
-         yy*( p[10]+xx*(p[14]+xx*(p[19]+xx*p[25])) + \
-         yy*( p[15]+xx*(p[20]+xx*p[26]) + \
-         yy*( p[21]+xx*p[27] + yy*p[28])))) )))
+         yy*(p[3]+xx*(p[5]+xx*(p[8]+xx*(p[12]+xx*(p[17]+xx*p[23])))) + \
+         yy*(p[6]+xx*(p[9]+xx*(p[13]+xx*(p[18]+xx*p[24]))) + \
+         yy*(p[10]+xx*(p[14]+xx*(p[19]+xx*p[25])) + \
+         yy*(p[15]+xx*(p[20]+xx*p[26]) + \
+         yy*(p[21]+xx*p[27] + yy*p[28])))))))
 
     eta = y*(1.+(1.-yy)*( \
           p[1]+yy*(p[2]+yy*(p[4]+yy*(p[7]+yy*(p[11]+yy*(p[16]+yy*p[22]))))) + \
-          xx*( p[3]+yy*(p[5]+yy*(p[8]+yy*(p[12]+yy*(p[17]+yy*p[23])))) + \
-          xx*( p[6]+yy*(p[9]+yy*(p[13]+yy*(p[18]+yy*p[24]))) + \
-          xx*( p[10]+yy*(p[14]+yy*(p[19]+yy*p[25])) + \
-          xx*( p[15]+yy*(p[20]+yy*p[26]) + \
-          xx*( p[21]+yy*p[27] + xx*p[28])))) )))
+          xx*(p[3]+yy*(p[5]+yy*(p[8]+yy*(p[12]+yy*(p[17]+yy*p[23])))) + \
+          xx*(p[6]+yy*(p[9]+yy*(p[13]+yy*(p[18]+yy*p[24]))) + \
+          xx*(p[10]+yy*(p[14]+yy*(p[19]+yy*p[25])) + \
+          xx*(p[15]+yy*(p[20]+yy*p[26]) + \
+          xx*(p[21]+yy*p[27] + xx*p[28])))))))
 
     return xi, eta
 
 def _xyaxis(nface, xi, eta):
+    '''Converts face number an xi, eta into a unit vector
+
+    Parameters
+    ----------
+    nface : int, array-like shape (Npts,)
+        sky-cube face number
+    xi : float, array-like shape (Npts,)
+        tangent plane coordinate
+    eta : float, array-like shape (Npts,)
+        tangent plane coordinate
+
+    Returns
+    -------
+    c : array-like (Npts, 3)
+        unit vector
+    '''
 
     n = np.size(nface)
 
@@ -381,7 +499,6 @@ def _xyaxis(nface, xi, eta):
 
     #c = np.empty(n)
 
-    #CONVERT THIS TO SkyCoord????
     uv[:, 0] = row0
     uv[:, 1] = row1
     uv[:, 2] = row2
@@ -389,9 +506,21 @@ def _xyaxis(nface, xi, eta):
     return uv
 
 def _uv2ll(vector):
+    '''Convert unit vectors to longitude/latitude
+
+    Parameters
+    ----------
+    vector : array-like (Npts, 3)
+        unit vectors
+
+    Returns
+    -------
+    lon_lat: array-like (Npts, 2)
+        longitude/latitude array
+    '''
 
     n = len(vector)
-    
+
     lon_lat = np.empty([n, 2])
 
     lon_lat[:, 0] = np.arctan2(vector[:, 1], vector[:, 0])
