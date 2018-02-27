@@ -1,5 +1,8 @@
 # pylint: disable=E1101, C0103, R0912, R0913, R0914, R0915, W0212
 
+#Copyright 2016 United States Government as represented by the Administrator
+#of the National Aeronautics and Space Administration. All Rights Reserved.
+
 '''This module provides functions to convert between sky coordinates and
 COBE pixel numbers. This is adapted from the IDL code written in support
 of COBE data analysis.
@@ -157,13 +160,6 @@ def _axisxy(c):
     g = c1 != 0
     abs_zy[g] = np.abs(c2[g]/c1[g])
 
-    #nface = 0 * (abs_zx >= 1 and abs_zy >= 1 and c2 >= 0) + \
-    #        5 * (abs_zx >= 1 and abs_zy >= 1 and c2 < 0) + \
-    #        1 * (abs_zx < 1 and abs_yx < 1 and c0 >= 0) + \
-    #        3 * (abs_zx < 1 and abs_yx < 1 and c0 < 0) + \
-    #        2 * (abs_zy < 1 and abs_yx >= 1 and c1 >= 0) + \
-    #        4 * (abs_zy < 1 and abs_yx >= 1 and c1 < 0)
-
     nface = 0 * np.all([abs_zx >= 1, abs_zy >= 1, c2 >= 0], axis=0) + \
             5 * np.all([abs_zx >= 1, abs_zy >= 1, c2 < 0], axis=0) + \
             1 * np.all([abs_zx < 1, abs_yx < 1, c0 >= 0], axis=0) + \
@@ -257,7 +253,6 @@ def _incube(alpha, beta):
     c02 = 0.106959469314
     d0 = 0.0759196200467
     d1 = -0.0217762490699
-    #r0 = 0.577350269
     aa = alpha**2
     bb = beta**2
     a4 = aa**2
@@ -496,8 +491,6 @@ def _xyaxis(nface, xi, eta):
     row2 /= norm
 
     uv = np.empty([n, 3])
-
-    #c = np.empty(n)
 
     uv[:, 0] = row0
     uv[:, 1] = row1
