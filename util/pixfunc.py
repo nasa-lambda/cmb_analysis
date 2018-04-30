@@ -525,3 +525,321 @@ def _uv2ll(vector):
     tmp[tmp < 0] += 360.0
 
     return lon_lat
+
+def bit_table_set(ix, iy):
+    '''Routine to set up the bit tables for use in the pixelization subroutines (extracted and
+    generalized from existing routines)
+    '''
+
+    length = len(ix)
+
+    for i in range(1, length+1):
+        j = i-1
+        k = 0
+        ip = 1
+
+        while j != 0:
+            id1 = j % 2
+            j /= 2
+            k = ip * id1 + k
+            ip *= 4
+        ix[i-1] = k
+        iy[i-1] = 2*k
+
+        #if j == 0:
+        #    ix[i-1] = k
+        #    iy[i-1] = 2*k
+        #else:
+        #    id1 = j % 2
+        #    j /= 2
+        #    k = ip * id1 + k
+        #    ip *= 4
+        #    goto if statement
+
+def edgchk(nface, ix, iy, maxval):
+    '''Check for ix, iy being over the edge of a face
+    Returns correct face, ix, iy in mface, jx, jy
+    '''
+
+    tempx = ix
+    tempy = iy
+    tempface = nface % 6
+
+    while tempx < 0 or tempx >=  maxval or tempy < 0 or tempy >= maxval:
+        if tempx < 0:
+            if tempface == 0:
+                mface = 4
+                jy = tempx + maxval
+                jx = maxval - 1 - tempy
+                tempx = jx
+                tempy = jy
+                tempface = mface
+            elif tempface == 1:
+                mface = 4
+                jx = maxval + tempx
+                jy = tempy
+                tempx = jx
+                tempface = mface
+            elif tempface == 2 or tempface == 3 or tempface == 4:
+                mface = tempface - 1
+                jx = maxval + tempx
+                jy = tempy
+                tempx = jx
+                tempface = mface
+            elif tempface == 5:
+                mface = 4
+                jx = tempy
+                jy = -tempx - 1
+                tempx = jx
+                tempy = jy
+                tempface = mface
+        elif tempx >= maxval:
+            if tempface == 0:
+                mface = 2
+                jx = tempy
+                jy = 2*maxval - 1 - tempx
+                tempx = jx
+                tempy = jy
+                tempface = mface
+            elif tempface == 1 or tempface == 2 or tempface == 3:
+                mface = tempface + 1
+                jy = tempy
+                jx = tempx - maxval
+                tempx = jx
+                tempface = mface
+            elif tempface == 4:
+                mface = 1
+                jy = tempy
+                jx = tempx - maxval
+                tempx = jx
+                tempface = mface
+            elif tempface == 5:
+                mface = 2
+                jx = maxval - 1 - tempy
+                jy = tempx - maxval
+                tempx = jx
+                tempy = jy
+                tempface = mface
+        elif tempy < 0:
+            if tempface == 0:
+                mface = 1
+                jy = tempy + maxval
+                jx = tempx
+                tempy=  jy
+                tempface = mface
+            elif tempface == 1:
+                mface = 5
+                jy = tempy + maxval
+                jx = tempx
+                tempy = jy
+                tempface = mface
+            elif tempface == 2:
+                mface = 5
+                jx = tempy + maxval
+                jy = maxval - 1 - tempx
+                tempx = jx
+                tempy = jy
+                tempface = mface
+            elif tempface == 3:
+                mface = 5
+                jx = maxval - 1 - tempx
+                jy = -tempy - 1
+                tempx = jx
+                tempy = jy
+                tempface = mface
+            elif tempface == 4:
+                mface = 5
+                jx = -tempy - 1
+                jy = tempx
+                tempx = jx
+                tempy = jy
+                tempface = mface
+            elif tempface == 5:
+                mface = 3
+                jx = maxval - 1 - tempx
+                jy = -tempy - 1
+                tempx = jx
+                tempy = jy
+                tempface = mface
+        elif tempy >= maxval:
+            if tempface == 0:
+                mface = 3
+                jx = maxval - 1 - tempx
+                jy = 2*maxval - 1 - tempy
+                tempx = jx
+                tempy = jy
+                tempface = mface
+            elif tempface == 1:
+                mface = 0
+                jy = tempy - maxval
+                jx = tempx
+                tempy = jy
+                tempface = mface
+            elif tempface == 2:
+                mface = 0
+                jx = 2*maxval - 1 - tempy
+                jy = tempx
+                tempx = jx
+                tempy = jy
+                tempface = mface
+            elif tempface == 3:
+                mface = 0
+                jx = maxval - 1 - tempx
+                jy = 2*maxval - 1 - tempy
+                tempx = jx
+                tempy = jy
+                tempface = mface
+            elif tempface == 4:
+                mface = 0
+                jx = tempy - maxval
+                jy = maxval - 1 - tempx
+                tempx = jx
+                tempy = jy
+                tempface = mface
+            elif tempface == 5:
+                mface = 1
+                jx = tempx
+                jy = tempy - maxval
+                tempy = jy
+                tempface = mface
+
+
+    mface = tempface
+    jx = tempx
+    jy = tempy
+
+    return mface, jx, jy
+
+def get_8_neighbors(pixel, res):
+    '''Generalized routine to return the numbers of all pixels adjoining the input pixel at
+    the given resolution
+
+    Parameters
+    ----------
+    pixel: int
+        pixel number
+    res: int
+        resolution
+
+    Returns
+    -------
+    neighbors: array, shape (8,)
+        neighboring pixel numbers
+    number_of_neighbors : int
+        number of adjoining pixels (4-8)
+
+    Notes
+    -----
+    1. All eight adjoining pixels are found by manipulation of the cartesian coordinates of the
+       input pixel in the plane of the face on which it lies. Set UPX_4_NEIGHBORS opening comments
+       for a detailed description of this process
+    2. Once all eight neighbors are found, the neighbors array is sorted and duplicate pixel numbers
+       are deleted
+    3. The number of unique neighbors and the array of pixel numbers are returned
+    '''
+
+    two14 = 2**14
+    two28 = 2**28
+
+    ixtab = np.zeros(128, dtype=np.int)
+    iytab = np.zeros(128, dtype=np.int)
+
+    bit_table_set(ixtab, iytab)
+    pixels_per_face = (2**(res-1)) ** 2
+    face = pixel // pixels_per_face
+    rpixel = pixel - face*pixels_per_face
+    res_diff = 15 - res
+    divisor = 4**res_diff
+    distance = 2**res_diff
+
+    ix = 0
+    iy = 0
+    ip = 1
+
+    #Break pixel number down into constituent x, y coordinates
+    while rpixel != 0:
+        id1 = rpixel % 2
+        rpixel = rpixel // 2
+        ix = (id1 * ip) + ix
+
+        id1 = rpixel % 2
+        rpixel = rpixel // 2
+        iy = (id1 * ip) + iy
+
+        ip *= 2
+
+    #Convert x, y coordinates of pixel in initial resolution to resolution of 15
+    ix *= distance
+    iy *= distance
+
+    neighbors = np.zeros(8, dtype=np.int)
+
+    #Calculate coordinates of each neighbor, check for edges, and return pixel number
+    #in appropriate array element
+    nface, jx, jy = edgchk(face, ix+distance, iy, two14) #Right
+    jxhi = jx // 128
+    jxlo = jx % 128
+    jyhi = jy // 128
+    jylo = jy % 128
+    neighbors[0] = (nface * two28) + ixtab[jxlo] + iytab[jylo] + two14 * (ixtab[jxhi] + iytab[jyhi])
+    neighbors[0] /= divisor
+    
+    nface, jx, jy = edgchk(face, ix, iy+distance, two14) #Top
+    jxhi = jx // 128
+    jxlo = jx % 128
+    jyhi = jy // 128
+    jylo = jy % 128
+    neighbors[1] = (nface * two28) + ixtab[jxlo] + iytab[jylo] + two14 * (ixtab[jxhi] + iytab[jyhi])
+    neighbors[1] /= divisor
+    
+    nface, jx, jy = edgchk(face, ix-distance, iy, two14) #Left
+    jxhi = jx // 128
+    jxlo = jx % 128
+    jyhi = jy // 128
+    jylo = jy % 128
+    neighbors[2] = (nface * two28) + ixtab[jxlo] + iytab[jylo] + two14 * (ixtab[jxhi] + iytab[jyhi])
+    neighbors[2] /= divisor
+    
+    nface, jx, jy = edgchk(face, ix, iy-distance, two14) #Bottom
+    jxhi = jx // 128
+    jxlo = jx % 128
+    jyhi = jy // 128
+    jylo = jy % 128
+    neighbors[3] = (nface * two28) + ixtab[jxlo] + iytab[jylo] + two14 * (ixtab[jxhi] + iytab[jyhi])
+    neighbors[3] /= divisor
+    
+    nface, jx, jy = edgchk(face, ix+distance, iy+distance, two14) #Top-Right
+    jxhi = jx // 128
+    jxlo = jx % 128
+    jyhi = jy // 128
+    jylo = jy % 128
+    neighbors[4] = (nface * two28) + ixtab[jxlo] + iytab[jylo] + two14 * (ixtab[jxhi] + iytab[jyhi])
+    neighbors[4] /= divisor
+    
+    nface, jx, jy = edgchk(face, ix-distance, iy+distance, two14) #Top-Left
+    jxhi = jx // 128
+    jxlo = jx % 128
+    jyhi = jy // 128
+    jylo = jy % 128
+    neighbors[5] = (nface * two28) + ixtab[jxlo] + iytab[jylo] + two14 * (ixtab[jxhi] + iytab[jyhi])
+    neighbors[5] /= divisor
+    
+    nface, jx, jy = edgchk(face, ix-distance, iy-distance, two14) #Bottom-Left
+    jxhi = jx // 128
+    jxlo = jx % 128
+    jyhi = jy // 128
+    jylo = jy % 128
+    neighbors[6] = (nface * two28) + ixtab[jxlo] + iytab[jylo] + two14 * (ixtab[jxhi] + iytab[jyhi])
+    neighbors[6] /= divisor
+    
+    nface, jx, jy = edgchk(face, ix+distance, iy-distance, two14) #Bottom-Right
+    jxhi = jx // 128
+    jxlo = jx % 128
+    jyhi = jy // 128
+    jylo = jy % 128
+    neighbors[7] = (nface * two28) + ixtab[jxlo] + iytab[jylo] + two14 * (ixtab[jxhi] + iytab[jyhi])
+    neighbors[7] /= divisor
+
+    neighbors = np.unique(neighbors)
+
+    return neighbors
