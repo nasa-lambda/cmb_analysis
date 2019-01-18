@@ -10,6 +10,7 @@ of COBE data analysis.
 
 import numpy as np
 from astropy.coordinates import SkyCoord
+import scipy.sparse
 
 def coord2pix(lon, lat=None, coord='C', res='F'):
     '''
@@ -269,7 +270,7 @@ def _incube(alpha, beta):
 
     return x, y
 
-def pix2coord(pixel, res, coord='C'):
+def pix2coord(pixel, res=6, coord='C'):
     '''Convert COBE quad-cube pixel number to sky coordinates (lon/lat, ra/dec, etc.)
 
     Parameters
@@ -312,22 +313,26 @@ def pix2coord(pixel, res, coord='C'):
     xi, eta = _fwdcube(x, y)
 
     vector = _xyaxis(out[:, 0], xi, eta)
-
+    
     lon_lat = _uv2ll(vector)
-
-    if npts > 1:
-        c = []
-        for i in range(npts):
-            c.append(SkyCoord(lon_lat[i, 0], lon_lat[i, 1], frame='geocentrictrueecliptic',
-                              unit='deg'))
-            c[i] = getattr(c[i], coord)
-    else:
-        c = SkyCoord(lon_lat[0, 0], lon_lat[0, 1], frame='geocentrictrueecliptic', unit='deg')
-        c = getattr(c, coord)
+    
+    #if npts > 1:
+    #    c = []
+    #    for i in range(npts):
+    #        print("FFF:", i)
+    #        c.append(SkyCoord(lon_lat[i, 0], lon_lat[i, 1], frame='geocentrictrueecliptic',
+    #                          unit='deg'))
+    #        c[i] = getattr(c[i], coord)
+    #else:
+    #    c = SkyCoord(lon_lat[0, 0], lon_lat[0, 1], frame='geocentrictrueecliptic', unit='deg')
+    #    c = getattr(c, coord)
+    
+    c = SkyCoord(lon_lat[:, 0], lon_lat[:, 1], frame='geocentrictrueecliptic', unit='deg')
+    c = getattr(c, coord)
 
     return c
 
-def _pix2fij(pixel, res):
+def _pix2fij(pixel, res=6):
     '''This function takes a n-element pixel array
     and generates an nx3 element array containing the
     corresponding face, column, and row number (the latter
@@ -525,3 +530,661 @@ def _uv2ll(vector):
     tmp[tmp < 0] += 360.0
 
     return lon_lat
+
+def bit_table_set(ix, iy):
+    '''Routine to set up the bit tables for use in the pixelization subroutines (extracted and
+    generalized from existing routines)
+    '''
+
+    length = len(ix)
+
+    for i in range(1, length+1):
+        j = i-1
+        k = 0
+        ip = 1
+
+        while j != 0:
+            id1 = j % 2
+            j /= 2
+            k = ip * id1 + k
+            ip *= 4
+        ix[i-1] = k
+        iy[i-1] = 2*k
+
+        #if j == 0:
+        #    ix[i-1] = k
+        #    iy[i-1] = 2*k
+        #else:
+        #    id1 = j % 2
+        #    j /= 2
+        #    k = ip * id1 + k
+        #    ip *= 4
+        #    goto if statement
+
+def edgchk(nface, ix, iy, maxval):
+    '''Check for ix, iy being over the edge of a face
+    Returns correct face, ix, iy in mface, jx, jy
+    '''
+
+    tempx = ix
+    tempy = iy
+    tempface = nface % 6
+
+    while tempx < 0 or tempx >=  maxval or tempy < 0 or tempy >= maxval:
+        if tempx < 0:
+            if tempface == 0:
+                mface = 4
+                jy = tempx + maxval
+                jx = maxval - 1 - tempy
+                tempx = jx
+                tempy = jy
+                tempface = mface
+            elif tempface == 1:
+                mface = 4
+                jx = maxval + tempx
+                jy = tempy
+                tempx = jx
+                tempface = mface
+            elif tempface == 2 or tempface == 3 or tempface == 4:
+                mface = tempface - 1
+                jx = maxval + tempx
+                jy = tempy
+                tempx = jx
+                tempface = mface
+            elif tempface == 5:
+                mface = 4
+                jx = tempy
+                jy = -tempx - 1
+                tempx = jx
+                tempy = jy
+                tempface = mface
+        elif tempx >= maxval:
+            if tempface == 0:
+                mface = 2
+                jx = tempy
+                jy = 2*maxval - 1 - tempx
+                tempx = jx
+                tempy = jy
+                tempface = mface
+            elif tempface == 1 or tempface == 2 or tempface == 3:
+                mface = tempface + 1
+                jy = tempy
+                jx = tempx - maxval
+                tempx = jx
+                tempface = mface
+            elif tempface == 4:
+                mface = 1
+                jy = tempy
+                jx = tempx - maxval
+                tempx = jx
+                tempface = mface
+            elif tempface == 5:
+                mface = 2
+                jx = maxval - 1 - tempy
+                jy = tempx - maxval
+                tempx = jx
+                tempy = jy
+                tempface = mface
+        elif tempy < 0:
+            if tempface == 0:
+                mface = 1
+                jy = tempy + maxval
+                jx = tempx
+                tempy=  jy
+                tempface = mface
+            elif tempface == 1:
+                mface = 5
+                jy = tempy + maxval
+                jx = tempx
+                tempy = jy
+                tempface = mface
+            elif tempface == 2:
+                mface = 5
+                jx = tempy + maxval
+                jy = maxval - 1 - tempx
+                tempx = jx
+                tempy = jy
+                tempface = mface
+            elif tempface == 3:
+                mface = 5
+                jx = maxval - 1 - tempx
+                jy = -tempy - 1
+                tempx = jx
+                tempy = jy
+                tempface = mface
+            elif tempface == 4:
+                mface = 5
+                jx = -tempy - 1
+                jy = tempx
+                tempx = jx
+                tempy = jy
+                tempface = mface
+            elif tempface == 5:
+                mface = 3
+                jx = maxval - 1 - tempx
+                jy = -tempy - 1
+                tempx = jx
+                tempy = jy
+                tempface = mface
+        elif tempy >= maxval:
+            if tempface == 0:
+                mface = 3
+                jx = maxval - 1 - tempx
+                jy = 2*maxval - 1 - tempy
+                tempx = jx
+                tempy = jy
+                tempface = mface
+            elif tempface == 1:
+                mface = 0
+                jy = tempy - maxval
+                jx = tempx
+                tempy = jy
+                tempface = mface
+            elif tempface == 2:
+                mface = 0
+                jx = 2*maxval - 1 - tempy
+                jy = tempx
+                tempx = jx
+                tempy = jy
+                tempface = mface
+            elif tempface == 3:
+                mface = 0
+                jx = maxval - 1 - tempx
+                jy = 2*maxval - 1 - tempy
+                tempx = jx
+                tempy = jy
+                tempface = mface
+            elif tempface == 4:
+                mface = 0
+                jx = tempy - maxval
+                jy = maxval - 1 - tempx
+                tempx = jx
+                tempy = jy
+                tempface = mface
+            elif tempface == 5:
+                mface = 1
+                jx = tempx
+                jy = tempy - maxval
+                tempy = jy
+                tempface = mface
+
+
+    mface = tempface
+    jx = tempx
+    jy = tempy
+
+    return mface, jx, jy
+
+def get_8_neighbors(pixel, res, four_neighbors=False):
+    '''Generalized routine to return the numbers of all pixels adjoining the input pixel at
+    the given resolution. This routine will work for resolutions up to 15.
+
+    Parameters
+    ----------
+    pixel: int
+        pixel number
+    res: int
+        resolution
+    four_neighbors: bool
+        return four neighbors instead of 8
+
+    Returns
+    -------
+    neighbors: array, shape (8,)
+        neighboring pixel numbers
+
+    Notes
+    -----
+    1. Divide the pixel number up into x and y bits. These are the cartesian coordinates
+       of the pixel on the face.
+    2. Covert the (x, y) found from the original pixel number in the input resolution to the
+       equivalent positions on a face of resolution 15. This is accomplixehd by multiplying
+       by the varaince DISTANCE, which is the width of a RES pixel in resolution=15 pixels.
+       Resoution=15 is the 'intermediary' format for finding neighbors.
+    3. Determine the cartesian coordinates (res=15) of the neighbors by adding the appropriate
+       orthogonal offset (DISTANCE) to the center pixel (x, y). EDGCHK is called to adjust the
+       new coordinates and face number in case PIXEL lies along an edge.
+    4. Convert the new coordinates to a resolution 15 pixel number.
+    5. Convert the res=15 pixel number to a res=RES pixel number by dividing by the appropriate
+       power of four (DIVISOR).
+
+    Steps 3-5 are repeated for each of the neighbors and duplicates are deleted before being returned
+    '''
+
+    eight_neighbors = not four_neighbors
+
+    two14 = 2**14
+    two28 = 2**28
+
+    ixtab = np.zeros(128, dtype=np.int)
+    iytab = np.zeros(128, dtype=np.int)
+
+    bit_table_set(ixtab, iytab)
+    pixels_per_face = (2**(res-1)) ** 2
+    face = pixel // pixels_per_face
+    rpixel = pixel - face*pixels_per_face
+    res_diff = 15 - res
+    divisor = 4**res_diff
+    distance = 2**res_diff
+
+    ix = 0
+    iy = 0
+    ip = 1
+
+    #Break pixel number down into constituent x, y coordinates
+    while rpixel != 0:
+        id1 = rpixel % 2
+        rpixel = rpixel // 2
+        ix = (id1 * ip) + ix
+
+        id1 = rpixel % 2
+        rpixel = rpixel // 2
+        iy = (id1 * ip) + iy
+
+        ip *= 2
+
+    #Convert x, y coordinates of pixel in initial resolution to resolution of 15
+    ix *= distance
+    iy *= distance
+
+    neighbors = np.zeros(4 + 4*eight_neighbors, dtype=np.int)
+
+    #Calculate coordinates of each neighbor, check for edges, and return pixel number
+    #in appropriate array element
+    nface, jx, jy = edgchk(face, ix+distance, iy, two14) #Right
+    jxhi = jx // 128
+    jxlo = jx % 128
+    jyhi = jy // 128
+    jylo = jy % 128
+    neighbors[0] = (nface * two28) + ixtab[jxlo] + iytab[jylo] + two14 * (ixtab[jxhi] + iytab[jyhi])
+    neighbors[0] /= divisor
+    
+    nface, jx, jy = edgchk(face, ix, iy+distance, two14) #Top
+    jxhi = jx // 128
+    jxlo = jx % 128
+    jyhi = jy // 128
+    jylo = jy % 128
+    neighbors[1] = (nface * two28) + ixtab[jxlo] + iytab[jylo] + two14 * (ixtab[jxhi] + iytab[jyhi])
+    neighbors[1] /= divisor
+    
+    nface, jx, jy = edgchk(face, ix-distance, iy, two14) #Left
+    jxhi = jx // 128
+    jxlo = jx % 128
+    jyhi = jy // 128
+    jylo = jy % 128
+    neighbors[2] = (nface * two28) + ixtab[jxlo] + iytab[jylo] + two14 * (ixtab[jxhi] + iytab[jyhi])
+    neighbors[2] /= divisor
+    
+    nface, jx, jy = edgchk(face, ix, iy-distance, two14) #Bottom
+    jxhi = jx // 128
+    jxlo = jx % 128
+    jyhi = jy // 128
+    jylo = jy % 128
+    neighbors[3] = (nface * two28) + ixtab[jxlo] + iytab[jylo] + two14 * (ixtab[jxhi] + iytab[jyhi])
+    neighbors[3] /= divisor
+   
+    if not four_neighbors:
+        nface, jx, jy = edgchk(face, ix+distance, iy+distance, two14) #Top-Right
+        jxhi = jx // 128
+        jxlo = jx % 128
+        jyhi = jy // 128
+        jylo = jy % 128
+        neighbors[4] = (nface * two28) + ixtab[jxlo] + iytab[jylo] + two14 * (ixtab[jxhi] + iytab[jyhi])
+        neighbors[4] /= divisor
+    
+        nface, jx, jy = edgchk(face, ix-distance, iy+distance, two14) #Top-Left
+        jxhi = jx // 128
+        jxlo = jx % 128
+        jyhi = jy // 128
+        jylo = jy % 128
+        neighbors[5] = (nface * two28) + ixtab[jxlo] + iytab[jylo] + two14 * (ixtab[jxhi] + iytab[jyhi])
+        neighbors[5] /= divisor
+    
+        nface, jx, jy = edgchk(face, ix-distance, iy-distance, two14) #Bottom-Left
+        jxhi = jx // 128
+        jxlo = jx % 128
+        jyhi = jy // 128
+        jylo = jy % 128
+        neighbors[6] = (nface * two28) + ixtab[jxlo] + iytab[jylo] + two14 * (ixtab[jxhi] + iytab[jyhi])
+        neighbors[6] /= divisor
+    
+        nface, jx, jy = edgchk(face, ix+distance, iy-distance, two14) #Bottom-Right
+        jxhi = jx // 128
+        jxlo = jx % 128
+        jyhi = jy // 128
+        jylo = jy % 128
+        neighbors[7] = (nface * two28) + ixtab[jxlo] + iytab[jylo] + two14 * (ixtab[jxhi] + iytab[jyhi])
+        neighbors[7] /= divisor
+
+    return np.unique(neighbors)
+
+def get_4_neighbors(pixel, res):
+    
+    return get_8_neighbors(pixel, res, four_neighbors=True)
+
+def res2npix(res):
+    '''Calculates the number of pixels given the input resolution'''
+
+    return 6 * 4**(res-1)
+
+def npix2res(npix):
+    '''Calculates the resolution given the input number of pixels'''
+    
+    if npix % 6 != 0:
+        raise ValueError("npix does not correspond with an actual resolution")
+
+    tmp = npix / 6
+
+    resm1 = np.log2(tmp) / 2
+
+    res = int(resm1 + 1)
+
+    if 4**(res - 1) != tmp:
+        raise ValueError("npix does not correspond with an actual resolution")
+
+    return res
+
+def sixpack(t_in, t_orient='R'):
+    '''Packs an unfolded skycube into 2x3 format (no wasted space).
+
+    Notes
+    -----
+    The dimensions compared to the IDL routine are reversed because IDL 
+    is column-major and numpy is row-major
+    '''
+
+    #Data compression routines takes a standard unfolded skycube, i.e.
+    #   00                          00
+    #   00                          00
+    #   11223344              44332211
+    #   11223344              44332211
+    #   55                          55
+    #   55                          55
+    #   "Left T"             "Right T"
+    #
+    #and compressed it into the space-saving form:
+    #           445500
+    #           445500
+    #           332211
+    #           332211
+    #
+    #It will work for both single "sheets" (2-d array) and spectral
+    #cubes (3-D). Note that the output corresponds to a "right-T"
+    #regardless of the orientation of the input
+
+    ndim = t_in.ndim
+    shape = np.shape(t_in)
+
+    #Create degenerate third dimension if needed
+    if ndim == 2:
+        t_in = t_in[np.newaxis, :, :]
+        depth = 1
+    else:
+        depth = t_in.shape[0]
+    xsize = t_in.shape[1]
+    ysize = t_in.shape[2]
+
+    #Make sure this is in fact a standard unfolded cube
+    if 4*xsize != 3*ysize:
+        raise ValueError("This is not a standard unfolded cube!")
+
+    #Now flip cube to right-T t_orientation if necessary.
+    if t_orient == 'L':
+        t_in = t_in[:, :, ::-1] #TODO: ???
+
+    fsize = ysize/4
+    box_out = t_in[:, fsize:3*fsize, fsize:4*fsize] #faces 0, 1, 2, 3
+    box_out[:, fsize:2*fsize, fsize:2*fsize] = t_in[:, :fsize, 3*fsize:4*fsize] #face 5
+    box_out[:, fsize:2*fsize, :fsize] = t_in[:, fsize*2*fsize, :fsize]
+
+    if depth == 1:
+        box_out.shape = (2*fsize, 3*fsize)
+
+    return box_out
+
+def sixunpack(box_in, badval=None):
+    '''Uncompresses the packed skycybe created by sixpack
+    '''
+
+    #Create degenerate 3rd dimension if needed
+    ndim = box_in.ndim
+    shape = box_in.shape
+
+    if ndim == 2:
+        box_in = box_in[np.newaxis, :, :]
+        depth = 1
+    else:
+        depth = shape[0]
+
+    xsize = shape[1]
+    ysize = shape[2]
+
+    #Make sure that this is in fact a compressed unfolded cube
+    if 3*xsize != 2*ysize:
+        raise ValueError("This is not a compressed sky cube")
+
+    #Create the output array with appropriate data type
+    fsize = ysize/3
+
+    t_out = np.zeros([depth, 3*fsize, 4*fsize], dtype=box_in.dtype)
+
+    #Initialize t_out to the bad pixel value if given
+    if badval is not None:
+        t_out[:, :, :] = badval
+
+    #Fill in the upper left 2x3 corner of the T. Will have to zero out
+    #box faces 4 and 5 later, so create a null face
+    t_out[:, fsize:3*fdize, fsize:4*fsize] = box_in
+    nullface = np.copy(t_out[:, :fsize, :2*fsize])
+
+    #Fill in the 4 and 5 faces, the blank them out of the T
+    t_out[:, :fsize, 3:fsize:4*fsize] = box_in[:, fsize:2*fsize, fsize:2*fsize]
+    t_out[:, fsize:2*fsize, :fsize] = box_in[:, fsize:2*fsize, :fsize]
+    t_out[:, 2*fsize:3*fsize, fsize:3*fsize] = nullface
+
+    #Eliminate the degenerate dimension if needed
+    if depth == 1:
+        t_out.shape = (3*fsize, 4*fsize)
+
+    return t_out
+
+def _pix2xy(pixel, res=6, data=None, bad_pixval=None, face=False, sixpack=False):
+    '''This function creates a raster image (sky cube or face) given a pixel list
+    and data array. The data array can be either a vector or 2d-array. In the
+    latter case, the data for each raster image can be stored in either
+    the columns or rows. The procedure also returns the x and y raster coordinates
+    of each pixel.
+    '''
+
+    pixel = np.atleast_1d(pixel)
+    #pixel = np.squeeze(pixel)
+    npix = len(pixel)
+
+    switch1 = False
+
+    if np.max(pixel) > 6*(4**(res-1)):
+        raise ValueError("Maximum pixel number too large for resolution", res)
+
+    #Determine size and "orientation" of data array
+    if data is not None:
+        data = np.asarray(data)
+
+        if data.ndim == 1:
+            if len(pixel) != len(data):
+                raise ValueError("Pixel and data array are of incompatible size")
+        elif data.ndim == 2:
+            if len(pixel) == len(data[0]):
+                switch1 = True
+
+            if (len(pixel) != len(data)) and len(pixel) != len(data[0]):
+                raise ValueError("pixel and data array are of incompatible size")
+        else:
+            raise ValueError("Data array must be vector or 2d array")
+
+    if data is None:
+        data = np.array([-1])
+ 
+    if switch1:
+        data = data.T
+
+    #Call rasterization routine
+    raster, x_out, y_out = _rastr(pixel, res, face=face, sixpack=sixpack, data=data,
+                                  bad_pixval=bad_pixval)
+
+    if switch1:
+        data = data.T
+
+    return x_out, y_out, raster
+
+def _rastr(pixel, res=6, face=False, sixpack=False, data=-1, bad_pixval=None):
+    '''Generates a raster image
+    '''
+
+    npix = len(pixel)
+    ndata = np.size(data)
+
+    if sixpack:
+        #NOTE: these are packed left_t offsets
+        i0 = 3
+        j0 = 2
+        offx = np.array([0, 0, 1, 2, 2, 1])
+        offy = np.array([1, 0, 0, 0, 1, 1])
+    elif face:
+        #Face
+        i0 = 1
+        j0 = 1
+        offx = np.array([0, 0, 0, 0, 0, 0])
+        offy = np.array([0, 0, 0, 0, 0, 0])
+    else:
+        #Cube
+        i0 = 4
+        j0 = 3
+        offx = np.array([0, 0, 1, 2, 3, 0])
+        offy = np.array([2, 1, 1, 1, 1, 0])
+
+    fij = _pix2fij(pixel, res) #get face, column, row info for pixels
+
+    cube_side = 2**(res-1)
+
+    len0 = i0 * cube_side
+
+    idx = fij[:, 0].astype(np.int)
+
+    x_out = offx[idx] * cube_side + fij[:, 1]
+    x_out = len0 - (x_out+1)
+    y_out = offy[idx] * cube_side + fij[:, 2]
+
+    if len(data) != 1:
+        thrd = ndata / npix
+        raster = np.zeros([i0*cube_side, j0*cube_side, thrd])
+
+        raster += bad_pixval
+
+        if thrd == 1:
+            raster[x_out, y_out] = data
+        else:
+            for k in range(thrd):
+                temp_arr = raster[:, :, k]
+                temp_arr[x_out, y_out] = data[:, k]
+                raster[:, :, k] = temp_arr
+                #raster[x_out, y_out, k] = data[:, k]
+    else:
+        raster = None
+
+    return raster, x_out, y_out
+
+def _pix2dat(pixel, x_in=None, y_in=None, raster=None):
+    '''This function creates a data array given either a list of
+    pixels or a set of x and y raster coordinates and a raster
+    image (sky cube or face). The skycube can be in either unfolded
+    or six pack format. This routine is the "complement" to pix2xy.
+    The program assumes a right oriented, ecliptic coordinate
+    input raster.
+    '''
+
+    #Get size of input raster
+    input_l, input_h = raster.shape
+
+    if input_l == input_h:
+        cube_side = input_l
+    elif 2*input_l == 4*input_h:
+        cube_side = input_l / 4
+    elif 2*input_l == 3*input_h:
+        cube_side = input_l / 3
+
+    #Determine resolution of quad cube
+    res = -1
+    for bit in range(16):
+        if cube_side ^ 2**bit == 0:
+            res = bit + 1
+            break
+
+    if res == -1:
+        raise ValueError("Improper image size")
+
+    #Determine number of pixels / get column and row numbers if pixel entry
+    if pixel.size != 0:
+        num_pix = pixel.size
+
+        if input_l == input_h:
+            #face
+            x_in, y_in, ras = _pix2xy(pixel, res=res, face=True)
+        elif 3*input_l == 4*input_h:
+            #skycube
+            x_in, y_in, ras = _pix2xy(pixel, res=res)
+        elif 2*input_l == 3*input_h:
+            #sixpack
+            x_in, y_in, ras = _pix2xy(pixel, res=res, sixpack=True)
+    else:
+        num_pix = x_in.size
+        if x_in.size != y_in.size:
+            raise ValueError("Column and Row arrays have incompatible sizes")
+
+    #Build data array
+    if len(raster.shape) == 2:
+        num_ras = 1
+    else:
+        num_ras = raster.shape[2]
+
+    data = np.zeros([num_pix, num_ras], dtype=raster.dtype)
+
+    #Load data array
+    if num_ras == 1:
+        data = raster[x_in, y_in]
+    else:
+        for i in range(num_ras):
+            ras1 = raster[:, :, i]
+            data[:, i] = ras1[x_in, y_in]
+
+    return data
+
+def _uv2proj(uvec, proj, sz_proj):
+    '''Converts units vectors to projection (screen) coordinates
+    '''
+
+    lon = np.arctan2(uvec[:, 1], uvec[:, 0])
+    lat = np.arcsin(uvec[:, 2])
+
+    half_l = sz_proj[1] // 2
+    half_h = sz_proj[2] // 2
+
+    if proj.upper() == 'A':
+        den = np.sqrt(1.0 + np.cos(lat)*np.cos(lon / 2.0))
+
+        proj_x = half_l - np.fix(half_l * (np.cos(lat)*np.sin(lon/2) / den)).astype(np.int)
+        proj_y = half_h + np.fix(half_h * (np.sin(lat) / den)).astype(np.int)
+    elif proj.upper() == 'S':
+        proj_x = half_l - np.fix(half_l * lon * np.cos(lat) / np.pi).astype(np.int)
+        proj_y = half_h + np.fix(half_h * lat / (np.pi/2)).astype(np.int)
+    elif proj.upper() == 'M':
+        pass
+    elif proj.upper() == 'P':
+        fac1 = np.sqrt(1 - np.sin(np.abs(lat)))
+        sgn = np.sign(lat)
+        fac2 = 1 - (sgn / 2)
+
+        proj_x = fac2 * half_l - sgn * np.fix(0.5 * half_l * fac1 * np.sin(lon)).astype(np.int)
+        proj_y = half_h - np.fix(half_h * fac1 * np.cos(lon)).astype(np.int)
+    else:
+        raise ValueError("Invalid projection string entered")
+
