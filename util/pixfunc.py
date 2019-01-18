@@ -8,6 +8,8 @@ COBE pixel numbers. This is adapted from the IDL code written in support
 of COBE data analysis.
 '''
 
+from __future__ import print_function, division
+
 import numpy as np
 from astropy.coordinates import SkyCoord
 import scipy.sparse
@@ -545,7 +547,7 @@ def bit_table_set(ix, iy):
 
         while j != 0:
             id1 = j % 2
-            j /= 2
+            j //= 2
             k = ip * id1 + k
             ip *= 4
         ix[i-1] = k
