@@ -8,6 +8,8 @@ COBE pixel numbers. This is adapted from the IDL code written in support
 of COBE data analysis.
 '''
 
+from __future__ import print_function, division
+
 import numpy as np
 from astropy.coordinates import SkyCoord
 import scipy.sparse
@@ -545,7 +547,7 @@ def bit_table_set(ix, iy):
 
         while j != 0:
             id1 = j % 2
-            j /= 2
+            j //= 2
             k = ip * id1 + k
             ip *= 4
         ix[i-1] = k
@@ -964,7 +966,7 @@ def sixunpack(box_in, badval=None):
         raise ValueError("This is not a compressed sky cube")
 
     #Create the output array with appropriate data type
-    fsize = ysize/3
+    fsize = ysize // 3
 
     t_out = np.zeros([depth, 3*fsize, 4*fsize], dtype=box_in.dtype)
 
@@ -1109,9 +1111,9 @@ def _pix2dat(pixel, x_in=None, y_in=None, raster=None):
     if input_l == input_h:
         cube_side = input_l
     elif 3*input_l == 4*input_h:
-        cube_side = input_l / 4
+        cube_side = input_l // 4
     elif 2*input_l == 3*input_h:
-        cube_side = input_l / 3
+        cube_side = input_l // 3
 
     #Determine resolution of quad cube
     res = -1
