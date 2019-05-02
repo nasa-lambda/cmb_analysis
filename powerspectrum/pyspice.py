@@ -273,7 +273,7 @@ def _correct_xi_from_mask(xi, xi_mask):
 
 def _apodizefunction(mu, fwhm_degrees, thetamax, typef=0):
     '''Calculates an apodization function to apply to
-    the correlatin functions
+    the correlation functions
 
     Parameters
     ----------
