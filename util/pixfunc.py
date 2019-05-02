@@ -988,7 +988,7 @@ def sixunpack(box_in, badval=None):
 
     return t_out
 
-def _pix2xy(pixel, res=6, data=None, bad_pixval=None, face=False, sixpack=False):
+def _pix2xy(pixel, res=6, data=None, bad_pixval=0.0, face=False, sixpack=False):
     '''This function creates a raster image (sky cube or face) given a pixel list
     and data array. The data array can be either a vector or 2d-array. In the
     latter case, the data for each raster image can be stored in either
@@ -1011,7 +1011,7 @@ def _pix2xy(pixel, res=6, data=None, bad_pixval=None, face=False, sixpack=False)
 
         if data.ndim == 1:
             if len(pixel) != len(data):
-                raise ValueError("Pixel and data array are of incompatible size")
+                raise ValueError("Pixel and data array are of incompatible size", len(pixel), len(data))
         elif data.ndim == 2:
             if len(pixel) == len(data[0]):
                 switch1 = True
@@ -1036,7 +1036,7 @@ def _pix2xy(pixel, res=6, data=None, bad_pixval=None, face=False, sixpack=False)
 
     return x_out, y_out, raster
 
-def _rastr(pixel, res=6, face=False, sixpack=False, data=-1, bad_pixval=None):
+def _rastr(pixel, res=6, face=False, sixpack=False, data=-1, bad_pixval=0.0):
     '''Generates a raster image
     '''
 
@@ -1071,12 +1071,13 @@ def _rastr(pixel, res=6, face=False, sixpack=False, data=-1, bad_pixval=None):
     idx = fij[:, 0].astype(np.int)
 
     x_out = offx[idx] * cube_side + fij[:, 1]
-    x_out = len0 - (x_out+1)
-    y_out = offy[idx] * cube_side + fij[:, 2]
+    x_out = (len0 - (x_out+1)).astype(np.int)
+    y_out = (offy[idx] * cube_side + fij[:, 2]).astype(np.int)
 
     if len(data) != 1:
         thrd = ndata / npix
         raster = np.zeros([i0*cube_side, j0*cube_side, thrd])
+        raster = np.squeeze(raster)
 
         raster += bad_pixval
 
@@ -1107,7 +1108,7 @@ def _pix2dat(pixel, x_in=None, y_in=None, raster=None):
 
     if input_l == input_h:
         cube_side = input_l
-    elif 2*input_l == 4*input_h:
+    elif 3*input_l == 4*input_h:
         cube_side = input_l / 4
     elif 2*input_l == 3*input_h:
         cube_side = input_l / 3
