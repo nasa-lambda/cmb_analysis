@@ -1077,7 +1077,7 @@ def _rastr(pixel, res=6, face=False, sixpack=False, data=-1, bad_pixval=0.0):
     y_out = (offy[idx] * cube_side + fij[:, 2]).astype(np.int)
 
     if len(data) != 1:
-        thrd = ndata / npix
+        thrd = ndata // npix
         raster = np.zeros([i0*cube_side, j0*cube_side, thrd])
         raster = np.squeeze(raster)
 
