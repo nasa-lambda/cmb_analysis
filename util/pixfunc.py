@@ -42,7 +42,6 @@ def coord2pix(lon, lat=None, coord='C', res='F'):
     elif res == 'B':
         res = 9
 
-
     #I believe this is the relevant code from coorconv.pro that I need to follow
     #uvec = cconv(input*1.,-1) #convert to unit vector
     #uvec = skyconv(uvec, inco=in_coord, outco='E') #convert to ecliptic
@@ -58,25 +57,13 @@ def coord2pix(lon, lat=None, coord='C', res='F'):
         coord = 'geocentrictrueecliptic'
 
     if lat is not None:
-        if npts > 1:
-            c = []
-            for lon_tmp, lat_tmp in zip(lon, lat):
-                c_tmp = SkyCoord(lon_tmp, lat_tmp, unit='deg', equinox='J2000', frame=coord)
-                c.append(c_tmp)
-        else:
-            c = SkyCoord(lon, lat, unit='deg', equinox='J2000', frame=coord)
+        c = SkyCoord(lon, lat, unit='deg', equinox='J2000', frame=coord)
     else:
         c = lon
 
-    if npts == 1:
-        c = c.geocentrictrueecliptic #check to see if this is the right ecliptic
-        c = c.cartesian
-    else:
-        c2 = []
-        for i in range(npts):
-            c2.append(c[i].geocentrictrueecliptic)
-            c2[i] = c2[i].cartesian
-        c = c2
+    c = c.geocentrictrueecliptic #check to see if this is the right ecliptic
+    c = c.cartesian
+    
     output = _uv2pix(c, res=res)
 
     if npts == 1:
@@ -1096,7 +1083,7 @@ def _rastr(pixel, res=6, face=False, sixpack=False, data=-1, bad_pixval=0.0):
 
     return raster, x_out, y_out
 
-def _pix2dat(pixel, x_in=None, y_in=None, raster=None):
+def _pix2dat(raster, pixel=None, x_in=None, y_in=None):
     '''This function creates a data array given either a list of
     pixels or a set of x and y raster coordinates and a raster
     image (sky cube or face). The skycube can be in either unfolded
@@ -1126,7 +1113,7 @@ def _pix2dat(pixel, x_in=None, y_in=None, raster=None):
         raise ValueError("Improper image size")
 
     #Determine number of pixels / get column and row numbers if pixel entry
-    if pixel.size != 0:
+    if pixel is not None:
         num_pix = pixel.size
 
         if input_l == input_h:
