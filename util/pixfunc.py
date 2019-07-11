@@ -42,7 +42,6 @@ def coord2pix(lon, lat=None, coord='C', res='F'):
     elif res == 'B':
         res = 9
 
-
     #I believe this is the relevant code from coorconv.pro that I need to follow
     #uvec = cconv(input*1.,-1) #convert to unit vector
     #uvec = skyconv(uvec, inco=in_coord, outco='E') #convert to ecliptic
@@ -58,31 +57,16 @@ def coord2pix(lon, lat=None, coord='C', res='F'):
         coord = 'geocentrictrueecliptic'
 
     if lat is not None:
-        if npts > 1:
-            c = []
-            for lon_tmp, lat_tmp in zip(lon, lat):
-                c_tmp = SkyCoord(lon_tmp, lat_tmp, unit='deg', equinox='J2000', frame=coord)
-                c.append(c_tmp)
-        else:
-            c = SkyCoord(lon, lat, unit='deg', equinox='J2000', frame=coord)
+        c = SkyCoord(lon, lat, unit='deg', equinox='J2000', frame=coord)
     else:
         c = lon
 
-    if npts == 1:
-        c = c.geocentrictrueecliptic #check to see if this is the right ecliptic
-        c = c.cartesian
-    else:
-        c2 = []
-        for i in range(npts):
-            c2.append(c[i].geocentrictrueecliptic)
-            c2[i] = c2[i].cartesian
-        c = c2
+    c = c.geocentrictrueecliptic #check to see if this is the right ecliptic
+    c = c.cartesian
+    
     output = _uv2pix(c, res=res)
 
-    if npts == 1:
-        return output[0]
-
-    return output
+    return np.squeeze(output)
 
 def _uv2pix(c, res=6):
     '''Returns pixel number given unit vector pointing to center
@@ -140,13 +124,16 @@ def _axisxy(c):
 
 
     if n > 1:
-        c0 = np.zeros(n)
-        c1 = np.zeros(n)
-        c2 = np.zeros(n)
-        for i in range(n):
-            c0[i] = c[i].x.value
-            c1[i] = c[i].y.value
-            c2[i] = c[i].z.value
+        #c0 = np.zeros(n)
+        #c1 = np.zeros(n)
+        #c2 = np.zeros(n)
+        #for i in range(n):
+        #    c0[i] = c[i].x.value
+        #    c1[i] = c[i].y.value
+        #    c2[i] = c[i].z.value
+        c0 = c.x.value
+        c1 = c.y.value
+        c2 = c.z.value
     else:
         c0 = np.array([c.x.value])
         c1 = np.array([c.y.value])
@@ -1191,3 +1178,9 @@ def _uv2proj(uvec, proj, sz_proj):
     else:
         raise ValueError("Invalid projection string entered")
 
+def get_map_size(m):
+    return len(m)
+
+def get_res(m):
+    npix = get_map_size(m)
+    return npix2res(npix)
