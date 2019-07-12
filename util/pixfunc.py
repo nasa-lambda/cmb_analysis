@@ -74,7 +74,7 @@ def _uv2pix(c, res=6):
 
     Parameters
     ----------
-    c : astropy.coordinates.SkyCoord or array-like (Npts, )
+    c : astropy.coordinates.SkyCoord or array-like
         sky coordinate system in cartesian coordinates
 
     res : int, optional
@@ -86,6 +86,7 @@ def _uv2pix(c, res=6):
         pixel numbers
     '''
 
+    ndim = np.ndim(c)
     npts = np.size(c)
 
     res1 = res - 1
@@ -93,6 +94,12 @@ def _uv2pix(c, res=6):
     #num_pix_face = num_pix_side**2
 
     face, x, y = _axisxy(c)
+    
+    if ndim > 1:
+        shape = np.shape(face)
+        face = np.ravel(face)
+        x = np.ravel(x)
+        y = np.ravel(y)
 
     i = x * num_pix_side
     i[i > 2**res1-1] = 2**res1 - 1
@@ -101,13 +108,16 @@ def _uv2pix(c, res=6):
     j = y * num_pix_side
     j[j > 2**res1-1] = 2**res1 - 1
     j = np.array(j, dtype=np.int)
-
+    
     fij = np.empty([npts, 3])
     fij[:, 0] = face
     fij[:, 1] = i
     fij[:, 2] = j
 
     pixel = _fij2pix(fij, res)
+
+    if ndim > 1:
+        pixel = np.reshape(pixel, shape)
 
     return pixel
 
@@ -139,9 +149,9 @@ def _axisxy(c):
         c1 = np.array([c.y.value])
         c2 = np.array([c.z.value])
 
-    abs_yx = np.ones(n)*np.inf
-    abs_zx = np.ones(n)*np.inf
-    abs_zy = np.ones(n)*np.inf
+    abs_yx = np.ones_like(c0, dtype=np.float)*np.inf
+    abs_zx = np.ones_like(c0, dtype=np.float)*np.inf
+    abs_zy = np.ones_like(c0, dtype=np.float)*np.inf
 
     g = c0 != 0
     abs_yx[g] = np.abs(c1[g]/c0[g])
@@ -160,6 +170,29 @@ def _axisxy(c):
     eta = np.zeros_like(c0)
     xi = np.zeros_like(c0)
 
+    i = nface == 0
+    eta[i] = -c0[i]/c2[i]
+    xi[i] = c1[i]/c2[i]
+    i = nface == 1
+    eta[i] = c2[i]/c0[i]
+    xi[i] = c1[i]/c0[i]
+    i = nface == 2
+    eta[i] = c2[i]/c1[i]
+    xi[i] = -c0[i]/c1[i]
+    i = nface == 3
+    eta[i] = -c2[i]/c0[i]
+    xi[i] = c1[i]/c0[i]
+    i = nface == 4
+    eta[i] = -c2[i]/c1[i]
+    xi[i] = -c0[i]/c1[i]
+    i = nface == 5
+    eta[i] = -c0[i]/c2[i]
+    xi[i] = -c1[i]/c2[i]
+    i = nface > 5
+    if np.sum(i) > 0:
+        raise ValueError("Invalid face number at idx:", np.where(i))
+    
+    '''
     for i in range(n):
         if nface[i] == 0:
             eta[i] = -c0[i]/c2[i]
@@ -181,6 +214,7 @@ def _axisxy(c):
             xi[i] = -c1[i]/c2[i]
         else:
             raise ValueError("Invalid face number")
+    '''
 
     x, y = _incube(xi, eta)
 
