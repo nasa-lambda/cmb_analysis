@@ -14,7 +14,7 @@ In addition, the location of the cmb_analysis directory needs to be added to you
 
 ## Contributing ##
 
-We welcome any outside contributions to this code, However, in order for us to accept any pull requests, the contributor must fill out and return the contributor license agreements found here for individuals and here for organizations.
+We welcome any outside contributions to this code, However, in order for us to accept any pull requests, the contributor must fill out and return the contributor license agreements found [here](https://lambda.gsfc.nasa.gov/data/cla/Ind_CLA_final_GSC-17661-1_CMB_Analysis_Software.pdf "CLA for individuals") for individuals and [here](https://lambda.gsfc.nasa.gov/data/cla/Corp_CLA_final_GSC-17661-1_CMB_Analysis_Software.pdf "CLA for organizations") for organizations.
 
 ## Contact ##
 
