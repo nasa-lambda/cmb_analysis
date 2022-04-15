@@ -1,10 +1,10 @@
 import matplotlib
 import numpy as np
 from astropy.coordinates import CartesianRepresentation
-import healpy.projaxes as PA 
+import healpy.projaxes as PA
+import healpy.rotator as R
 
 from . import pixfunc
-
 
 def vec2pix(res, x, y, z):
     c = CartesianRepresentation(x, y, z)
@@ -26,6 +26,123 @@ class QcMollweideAxes(PA.MollweideAxes):
         res = pixfunc.npix2res(pixfunc.get_map_size(map))
         f = lambda x, y, z: vec2pix(res, x, y, z)
         return super(QcMollweideAxes, self).projmap(map, f, **kwds)
+
+    def projquiver(self, *args, **kwds):
+        """projquiver is a wrapper around :func:`matplotlib.Axes.quiver` to take
+        into account the spherical projection.
+
+        You can call this function as::
+
+           projquiver([X, Y], U, V, [C], **kw)
+           projquiver([theta, phi], mag, ang, [C], **kw)
+
+        Parameters
+        ----------
+
+        Notes
+        -----
+        Other keywords are transmitted to :func:`matplotlib.Axes.quiver`
+
+        See Also
+        --------
+        projplot, projscatter, projtext
+        """
+
+        '''
+        Qmap = args[0][0]
+        Umap = args[0][1]
+
+        npix_in = len(Qmap)
+        nside_in = pixfunc.npix2nside(npix_in)
+
+        Qmap = pixfunc.ud_grade(Qmap, nside)
+        Umap = pixfunc.ud_grade(Umap, nside)
+
+        mag = np.sqrt(Qmap**2 + Umap**2)
+        ang = np.arctan2(Umap, Qmap) / 2.0
+
+        max_mag = np.max(mag)
+        mag /= max_mag
+
+        npix = H.nside2npix(nside)
+        pix = np.arange(npix)
+
+        theta, phi = pixfunc.pix2ang(nside, pix)
+        '''
+
+        #Work on input signature
+        c = None
+        if len(args) < 2:
+            raise ValueError("Not enough arguments given")
+        if len(args) == 2:
+            mag, ang = np.asarray(args[0]), np.asarray(args[1])
+            raise ValueError("Not calculating theta, phi yet")
+        elif len(args) == 4:
+            theta, phi = np.asarray(args[0]), np.asarray(args[1])
+            mag, ang = np.asarray(args[2]), np.asarray(args[3])
+        elif len(args) == 5:
+            theta, phi = np.asarray(args[0]), np.asarray(args[1])
+            mag, ang = np.asarray(args[2]), np.asarray(args[3])
+            c = np.asarray(args[4])
+        else:
+            raise TypeError("Wrong number of arguments given")
+
+        save_input_data = hasattr(self.figure, "zoomtool")
+        if save_input_data:
+            input_data = (theta, phi, mag, ang, args, kwds.copy())
+
+        rot = kwds.pop("rot", None)
+        if rot is not None:
+            rot = np.array(np.atleast_1d(rot), copy=1)
+            rot.resize(3)
+            rot[1] = rot[1] - 90.
+
+        coord = self.proj.mkcoord(kwds.pop("coord", None))[::-1]
+        lonlat = kwds.pop("lonlat", False)
+    
+        vec = R.dir2vec(theta, phi, lonlat=lonlat)
+        vec = (R.Rotator(rot=rot, coord=coord, eulertype="Y")).I(vec)
+        x, y = self.proj.vec2xy(vec, direct=kwds.pop("direct", False))
+   
+        lat = np.pi/2 - theta
+        lon = np.pi - phi
+
+        ang_off = -np.pi/2*np.sin(lat)*np.sin(lon)
+    
+        #ang_off = np.zeros_like(ang)
+
+        u = 1e-10*mag*np.cos(ang + ang_off)
+        v = 1e-10*mag*np.sin(ang + ang_off)
+
+        #x = np.linspace(-2.0, 2.0, num=10)
+        #y = np.zeros_like(x)
+        #u = 1e-5
+        #v = 1e-5
+
+        #s = self.quiver(x, y, u, v, c, *args, headwidth=0, width=0.001, pivot='mid', **kwds)
+        #s = self.quiver(x, y, u, v, c, *args, headwidth=0, width=0.01, pivot='mid', **kwds)
+        if c is not None:
+            s = self.quiver(x, y, u, v, c, headwidth=0, width=0.001, pivot='mid', **kwds)
+        else:
+            s = self.quiver(x, y, u, v, headwidth=0, width=0.001, pivot='mid', **kwds)
+
+        '''
+        theta = 0.0
+        phi = 0.0
+        
+        s = self.projtext(theta, phi, 'AA')
+        vec = R.dir2vec(theta, phi, lonlat=lonlat)
+        vec = (R.Rotator(rot=rot, coord=None, eulertype="Y")).I(vec)
+        x, y = self.proj.vec2xy(vec, direct=kwds.pop("direct", False))
+        print("TEST:", x, y)
+        '''
+
+        if save_input_data:
+            if not hasattr(self, "_quiver_data"):
+                self._quiver_data = []
+            self._quiver_data.append((s, input_data))
+        return s
+    
 
 class QcCartesianAxes(PA.CartesianAxes):
     def projmap(self, map, nest=False, **kwds):
@@ -79,7 +196,7 @@ def mollview(
     nlocs=2,
     return_projected_map=False,
 ):
-    """Plot a healpix map (given as an array) in Mollweide projection.
+    """Plot a COBE Quadcube map (given as an array) in Mollweide projection.
     
     Parameters
     ----------
@@ -156,6 +273,10 @@ def mollview(
     # Create the figure
     import pylab
 
+    if len(map) == 3:
+        Qmap, Umap = map[1], map[2]
+        map = map[0]
+
     # Ensure that the resolution is valid
     res = pixfunc.get_res(map)
 
@@ -224,6 +345,23 @@ def mollview(
             bgcolor=bgcolor,
             norm=norm,
         )
+
+        if 'Qmap' in locals():
+            resQ = pixfunc.npix2res(len(Qmap))
+            pixQ = np.arange(len(Qmap))
+            c = pixfunc.pix2coord(pixQ, res=resQ, coord='G')
+            theta = 90.0 - c.b.value
+            phi = c.l.value
+            #theta, phi = pixfunc.pix2ang(nsideQ, pixQ)
+
+            mag = np.sqrt(Qmap**2 + Umap**2)
+            ang = np.arctan2(Umap, Qmap) / 2.0
+
+            mag_max = np.max(mag)
+            mag /= mag_max
+        
+            img = ax.projquiver(theta, phi, mag, ang)
+        
         if cbar:
             im = ax.get_images()[0]
             b = im.norm.inverse(np.linspace(0, 1, im.cmap.N + 1))

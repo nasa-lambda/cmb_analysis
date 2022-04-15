@@ -14,6 +14,8 @@ import numpy as np
 from astropy.coordinates import SkyCoord
 import scipy.sparse
 
+UNSEEN = None
+
 def coord2pix(lon, lat=None, coord='C', res='F'):
     '''
     Get the COBE pixel closest to the input longitude/latitude
@@ -593,7 +595,7 @@ def edgchk(nface, ix, iy, maxval):
     tempy = iy
     tempface = nface % 6
 
-    while tempx < 0 or tempx >=  maxval or tempy < 0 or tempy >= maxval:
+    while tempx < 0 or tempx >= maxval or tempy < 0 or tempy >= maxval:
         if tempx < 0:
             if tempface == 0:
                 mface = 4
@@ -761,8 +763,8 @@ def get_8_neighbors(pixel, res, four_neighbors=False):
     1. Divide the pixel number up into x and y bits. These are the cartesian coordinates
        of the pixel on the face.
     2. Covert the (x, y) found from the original pixel number in the input resolution to the
-       equivalent positions on a face of resolution 15. This is accomplixehd by multiplying
-       by the varaince DISTANCE, which is the width of a RES pixel in resolution=15 pixels.
+       equivalent positions on a face of resolution 15. This is accomplished by multiplying
+       by the variable DISTANCE, which is the width of a RES pixel in resolution=15 pixels.
        Resoution=15 is the 'intermediary' format for finding neighbors.
     3. Determine the cartesian coordinates (res=15) of the neighbors by adding the appropriate
        orthogonal offset (DISTANCE) to the center pixel (x, y). EDGCHK is called to adjust the
@@ -820,15 +822,15 @@ def get_8_neighbors(pixel, res, four_neighbors=False):
     jyhi = jy // 128
     jylo = jy % 128
     neighbors[0] = (nface * two28) + ixtab[jxlo] + iytab[jylo] + two14 * (ixtab[jxhi] + iytab[jyhi])
-    neighbors[0] /= divisor
-    
+    neighbors[0] //= divisor
+   
     nface, jx, jy = edgchk(face, ix, iy+distance, two14) #Top
     jxhi = jx // 128
     jxlo = jx % 128
     jyhi = jy // 128
     jylo = jy % 128
     neighbors[1] = (nface * two28) + ixtab[jxlo] + iytab[jylo] + two14 * (ixtab[jxhi] + iytab[jyhi])
-    neighbors[1] /= divisor
+    neighbors[1] //= divisor
     
     nface, jx, jy = edgchk(face, ix-distance, iy, two14) #Left
     jxhi = jx // 128
@@ -836,7 +838,7 @@ def get_8_neighbors(pixel, res, four_neighbors=False):
     jyhi = jy // 128
     jylo = jy % 128
     neighbors[2] = (nface * two28) + ixtab[jxlo] + iytab[jylo] + two14 * (ixtab[jxhi] + iytab[jyhi])
-    neighbors[2] /= divisor
+    neighbors[2] //= divisor
     
     nface, jx, jy = edgchk(face, ix, iy-distance, two14) #Bottom
     jxhi = jx // 128
@@ -844,7 +846,7 @@ def get_8_neighbors(pixel, res, four_neighbors=False):
     jyhi = jy // 128
     jylo = jy % 128
     neighbors[3] = (nface * two28) + ixtab[jxlo] + iytab[jylo] + two14 * (ixtab[jxhi] + iytab[jyhi])
-    neighbors[3] /= divisor
+    neighbors[3] //= divisor
    
     if not four_neighbors:
         nface, jx, jy = edgchk(face, ix+distance, iy+distance, two14) #Top-Right
@@ -853,7 +855,7 @@ def get_8_neighbors(pixel, res, four_neighbors=False):
         jyhi = jy // 128
         jylo = jy % 128
         neighbors[4] = (nface * two28) + ixtab[jxlo] + iytab[jylo] + two14 * (ixtab[jxhi] + iytab[jyhi])
-        neighbors[4] /= divisor
+        neighbors[4] //= divisor
     
         nface, jx, jy = edgchk(face, ix-distance, iy+distance, two14) #Top-Left
         jxhi = jx // 128
@@ -861,7 +863,7 @@ def get_8_neighbors(pixel, res, four_neighbors=False):
         jyhi = jy // 128
         jylo = jy % 128
         neighbors[5] = (nface * two28) + ixtab[jxlo] + iytab[jylo] + two14 * (ixtab[jxhi] + iytab[jyhi])
-        neighbors[5] /= divisor
+        neighbors[5] //= divisor
     
         nface, jx, jy = edgchk(face, ix-distance, iy-distance, two14) #Bottom-Left
         jxhi = jx // 128
@@ -869,7 +871,7 @@ def get_8_neighbors(pixel, res, four_neighbors=False):
         jyhi = jy // 128
         jylo = jy % 128
         neighbors[6] = (nface * two28) + ixtab[jxlo] + iytab[jylo] + two14 * (ixtab[jxhi] + iytab[jyhi])
-        neighbors[6] /= divisor
+        neighbors[6] //= divisor
     
         nface, jx, jy = edgchk(face, ix+distance, iy-distance, two14) #Bottom-Right
         jxhi = jx // 128
@@ -877,9 +879,10 @@ def get_8_neighbors(pixel, res, four_neighbors=False):
         jyhi = jy // 128
         jylo = jy % 128
         neighbors[7] = (nface * two28) + ixtab[jxlo] + iytab[jylo] + two14 * (ixtab[jxhi] + iytab[jyhi])
-        neighbors[7] /= divisor
+        neighbors[7] //= divisor
 
-    return np.unique(neighbors)
+    #return np.unique(neighbors)
+    return neighbors
 
 def get_4_neighbors(pixel, res):
     
@@ -1098,7 +1101,7 @@ def _rastr(pixel, res=6, face=False, sixpack=False, data=-1, bad_pixval=0.0):
     y_out = (offy[idx] * cube_side + fij[:, 2]).astype(np.int)
 
     if len(data) != 1:
-        thrd = ndata / npix
+        thrd = ndata // npix
         raster = np.zeros([i0*cube_side, j0*cube_side, thrd])
         raster = np.squeeze(raster)
 
@@ -1218,3 +1221,20 @@ def get_map_size(m):
 def get_res(m):
     npix = get_map_size(m)
     return npix2res(npix)
+
+def remove_monopole(m, bad=UNSEEN, gal_cut=0, fitval=False, copy=True, verbose=True):
+    m = np.array(m, copy=copy)
+    npix = m.size
+    res = npix2res(npix)
+    mono = fit_monopole(m, bad=bad, gal_cut=gal_cut)
+
+    idx = np.logical_and(m.flat != bad, np.isfinite(m.flat))
+
+    m.flat[idx] -= mono
+
+    if verbose:
+        print("monopole:", mono)
+    if fitval:
+        return m, mono
+    else:
+        return m
