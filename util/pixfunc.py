@@ -1222,15 +1222,30 @@ def get_res(m):
     npix = get_map_size(m)
     return npix2res(npix)
 
+def fit_monopole(m, bad=UNSEEN, gal_cut=0):
+    npix = m.size
+    res = npix2res(npix)
+    pixel = np.arange(npix)
+
+    c = pix2coord(pixel, res=res, coord='G')
+    galb = c.b.deg
+
+    idx = np.abs(galb) > gal_cut
+
+    mono = np.nanmean(m[idx])
+
+    return mono
+    
+
 def remove_monopole(m, bad=UNSEEN, gal_cut=0, fitval=False, copy=True, verbose=True):
     m = np.array(m, copy=copy)
     npix = m.size
     res = npix2res(npix)
     mono = fit_monopole(m, bad=bad, gal_cut=gal_cut)
 
-    idx = np.logical_and(m.flat != bad, np.isfinite(m.flat))
+    idx = np.logical_and(m != bad, np.isfinite(m))
 
-    m.flat[idx] -= mono
+    m[idx] -= mono
 
     if verbose:
         print("monopole:", mono)
