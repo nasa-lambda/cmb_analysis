@@ -14,6 +14,8 @@ import numpy as np
 from astropy.coordinates import SkyCoord
 import scipy.sparse
 
+UNSEEN = None
+
 def coord2pix(lon, lat=None, coord='C', res='F'):
     '''
     Get the COBE pixel closest to the input longitude/latitude
@@ -66,10 +68,7 @@ def coord2pix(lon, lat=None, coord='C', res='F'):
     
     output = _uv2pix(c, res=res)
 
-    if npts == 1:
-        return output[0]
-
-    return output
+    return np.squeeze(output)
 
 def _uv2pix(c, res=6):
     '''Returns pixel number given unit vector pointing to center
@@ -77,7 +76,7 @@ def _uv2pix(c, res=6):
 
     Parameters
     ----------
-    c : astropy.coordinates.SkyCoord or array-like (Npts, )
+    c : astropy.coordinates.SkyCoord or array-like
         sky coordinate system in cartesian coordinates
 
     res : int, optional
@@ -89,6 +88,7 @@ def _uv2pix(c, res=6):
         pixel numbers
     '''
 
+    ndim = np.ndim(c)
     npts = np.size(c)
 
     res1 = res - 1
@@ -96,6 +96,12 @@ def _uv2pix(c, res=6):
     #num_pix_face = num_pix_side**2
 
     face, x, y = _axisxy(c)
+    
+    if ndim > 1:
+        shape = np.shape(face)
+        face = np.ravel(face)
+        x = np.ravel(x)
+        y = np.ravel(y)
 
     i = x * num_pix_side
     i[i > 2**res1-1] = 2**res1 - 1
@@ -104,13 +110,16 @@ def _uv2pix(c, res=6):
     j = y * num_pix_side
     j[j > 2**res1-1] = 2**res1 - 1
     j = np.array(j, dtype=np.int)
-
+    
     fij = np.empty([npts, 3])
     fij[:, 0] = face
     fij[:, 1] = i
     fij[:, 2] = j
 
     pixel = _fij2pix(fij, res)
+
+    if ndim > 1:
+        pixel = np.reshape(pixel, shape)
 
     return pixel
 
@@ -127,21 +136,24 @@ def _axisxy(c):
 
 
     if n > 1:
-        c0 = np.zeros(n)
-        c1 = np.zeros(n)
-        c2 = np.zeros(n)
-        for i in range(n):
-            c0[i] = c[i].x.value
-            c1[i] = c[i].y.value
-            c2[i] = c[i].z.value
+        #c0 = np.zeros(n)
+        #c1 = np.zeros(n)
+        #c2 = np.zeros(n)
+        #for i in range(n):
+        #    c0[i] = c[i].x.value
+        #    c1[i] = c[i].y.value
+        #    c2[i] = c[i].z.value
+        c0 = c.x.value
+        c1 = c.y.value
+        c2 = c.z.value
     else:
         c0 = np.array([c.x.value])
         c1 = np.array([c.y.value])
         c2 = np.array([c.z.value])
 
-    abs_yx = np.ones(n)*np.inf
-    abs_zx = np.ones(n)*np.inf
-    abs_zy = np.ones(n)*np.inf
+    abs_yx = np.ones_like(c0, dtype=np.float)*np.inf
+    abs_zx = np.ones_like(c0, dtype=np.float)*np.inf
+    abs_zy = np.ones_like(c0, dtype=np.float)*np.inf
 
     g = c0 != 0
     abs_yx[g] = np.abs(c1[g]/c0[g])
@@ -160,6 +172,29 @@ def _axisxy(c):
     eta = np.zeros_like(c0)
     xi = np.zeros_like(c0)
 
+    i = nface == 0
+    eta[i] = -c0[i]/c2[i]
+    xi[i] = c1[i]/c2[i]
+    i = nface == 1
+    eta[i] = c2[i]/c0[i]
+    xi[i] = c1[i]/c0[i]
+    i = nface == 2
+    eta[i] = c2[i]/c1[i]
+    xi[i] = -c0[i]/c1[i]
+    i = nface == 3
+    eta[i] = -c2[i]/c0[i]
+    xi[i] = c1[i]/c0[i]
+    i = nface == 4
+    eta[i] = -c2[i]/c1[i]
+    xi[i] = -c0[i]/c1[i]
+    i = nface == 5
+    eta[i] = -c0[i]/c2[i]
+    xi[i] = -c1[i]/c2[i]
+    i = nface > 5
+    if np.sum(i) > 0:
+        raise ValueError("Invalid face number at idx:", np.where(i))
+    
+    '''
     for i in range(n):
         if nface[i] == 0:
             eta[i] = -c0[i]/c2[i]
@@ -181,6 +216,7 @@ def _axisxy(c):
             xi[i] = -c1[i]/c2[i]
         else:
             raise ValueError("Invalid face number")
+    '''
 
     x, y = _incube(xi, eta)
 
@@ -559,7 +595,7 @@ def edgchk(nface, ix, iy, maxval):
     tempy = iy
     tempface = nface % 6
 
-    while tempx < 0 or tempx >=  maxval or tempy < 0 or tempy >= maxval:
+    while tempx < 0 or tempx >= maxval or tempy < 0 or tempy >= maxval:
         if tempx < 0:
             if tempface == 0:
                 mface = 4
@@ -727,8 +763,8 @@ def get_8_neighbors(pixel, res, four_neighbors=False):
     1. Divide the pixel number up into x and y bits. These are the cartesian coordinates
        of the pixel on the face.
     2. Covert the (x, y) found from the original pixel number in the input resolution to the
-       equivalent positions on a face of resolution 15. This is accomplixehd by multiplying
-       by the varaince DISTANCE, which is the width of a RES pixel in resolution=15 pixels.
+       equivalent positions on a face of resolution 15. This is accomplished by multiplying
+       by the variable DISTANCE, which is the width of a RES pixel in resolution=15 pixels.
        Resoution=15 is the 'intermediary' format for finding neighbors.
     3. Determine the cartesian coordinates (res=15) of the neighbors by adding the appropriate
        orthogonal offset (DISTANCE) to the center pixel (x, y). EDGCHK is called to adjust the
@@ -786,15 +822,15 @@ def get_8_neighbors(pixel, res, four_neighbors=False):
     jyhi = jy // 128
     jylo = jy % 128
     neighbors[0] = (nface * two28) + ixtab[jxlo] + iytab[jylo] + two14 * (ixtab[jxhi] + iytab[jyhi])
-    neighbors[0] /= divisor
-    
+    neighbors[0] //= divisor
+   
     nface, jx, jy = edgchk(face, ix, iy+distance, two14) #Top
     jxhi = jx // 128
     jxlo = jx % 128
     jyhi = jy // 128
     jylo = jy % 128
     neighbors[1] = (nface * two28) + ixtab[jxlo] + iytab[jylo] + two14 * (ixtab[jxhi] + iytab[jyhi])
-    neighbors[1] /= divisor
+    neighbors[1] //= divisor
     
     nface, jx, jy = edgchk(face, ix-distance, iy, two14) #Left
     jxhi = jx // 128
@@ -802,7 +838,7 @@ def get_8_neighbors(pixel, res, four_neighbors=False):
     jyhi = jy // 128
     jylo = jy % 128
     neighbors[2] = (nface * two28) + ixtab[jxlo] + iytab[jylo] + two14 * (ixtab[jxhi] + iytab[jyhi])
-    neighbors[2] /= divisor
+    neighbors[2] //= divisor
     
     nface, jx, jy = edgchk(face, ix, iy-distance, two14) #Bottom
     jxhi = jx // 128
@@ -810,7 +846,7 @@ def get_8_neighbors(pixel, res, four_neighbors=False):
     jyhi = jy // 128
     jylo = jy % 128
     neighbors[3] = (nface * two28) + ixtab[jxlo] + iytab[jylo] + two14 * (ixtab[jxhi] + iytab[jyhi])
-    neighbors[3] /= divisor
+    neighbors[3] //= divisor
    
     if not four_neighbors:
         nface, jx, jy = edgchk(face, ix+distance, iy+distance, two14) #Top-Right
@@ -819,7 +855,7 @@ def get_8_neighbors(pixel, res, four_neighbors=False):
         jyhi = jy // 128
         jylo = jy % 128
         neighbors[4] = (nface * two28) + ixtab[jxlo] + iytab[jylo] + two14 * (ixtab[jxhi] + iytab[jyhi])
-        neighbors[4] /= divisor
+        neighbors[4] //= divisor
     
         nface, jx, jy = edgchk(face, ix-distance, iy+distance, two14) #Top-Left
         jxhi = jx // 128
@@ -827,7 +863,7 @@ def get_8_neighbors(pixel, res, four_neighbors=False):
         jyhi = jy // 128
         jylo = jy % 128
         neighbors[5] = (nface * two28) + ixtab[jxlo] + iytab[jylo] + two14 * (ixtab[jxhi] + iytab[jyhi])
-        neighbors[5] /= divisor
+        neighbors[5] //= divisor
     
         nface, jx, jy = edgchk(face, ix-distance, iy-distance, two14) #Bottom-Left
         jxhi = jx // 128
@@ -835,7 +871,7 @@ def get_8_neighbors(pixel, res, four_neighbors=False):
         jyhi = jy // 128
         jylo = jy % 128
         neighbors[6] = (nface * two28) + ixtab[jxlo] + iytab[jylo] + two14 * (ixtab[jxhi] + iytab[jyhi])
-        neighbors[6] /= divisor
+        neighbors[6] //= divisor
     
         nface, jx, jy = edgchk(face, ix+distance, iy-distance, two14) #Bottom-Right
         jxhi = jx // 128
@@ -843,9 +879,10 @@ def get_8_neighbors(pixel, res, four_neighbors=False):
         jyhi = jy // 128
         jylo = jy % 128
         neighbors[7] = (nface * two28) + ixtab[jxlo] + iytab[jylo] + two14 * (ixtab[jxhi] + iytab[jyhi])
-        neighbors[7] /= divisor
+        neighbors[7] //= divisor
 
-    return np.unique(neighbors)
+    #return np.unique(neighbors)
+    return neighbors
 
 def get_4_neighbors(pixel, res):
     
@@ -1178,3 +1215,41 @@ def _uv2proj(uvec, proj, sz_proj):
     else:
         raise ValueError("Invalid projection string entered")
 
+def get_map_size(m):
+    return len(m)
+
+def get_res(m):
+    npix = get_map_size(m)
+    return npix2res(npix)
+
+def fit_monopole(m, bad=UNSEEN, gal_cut=0):
+    npix = m.size
+    res = npix2res(npix)
+    pixel = np.arange(npix)
+
+    c = pix2coord(pixel, res=res, coord='G')
+    galb = c.b.deg
+
+    idx = np.abs(galb) > gal_cut
+
+    mono = np.nanmean(m[idx])
+
+    return mono
+    
+
+def remove_monopole(m, bad=UNSEEN, gal_cut=0, fitval=False, copy=True, verbose=True):
+    m = np.array(m, copy=copy)
+    npix = m.size
+    res = npix2res(npix)
+    mono = fit_monopole(m, bad=bad, gal_cut=gal_cut)
+
+    idx = np.logical_and(m != bad, np.isfinite(m))
+
+    m[idx] -= mono
+
+    if verbose:
+        print("monopole:", mono)
+    if fitval:
+        return m, mono
+    else:
+        return m
