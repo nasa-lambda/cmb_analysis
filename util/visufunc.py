@@ -42,7 +42,18 @@ def mollview(
     if fig is None:
         fig = plt.figure()
 
+    #TODO: Update with better values
     rect = [0, 0, 1, 1]
+
+    if coord is not None:
+        if type(coord) is str:
+            coord = ['E', coord]
+        elif type(coord) is list:
+            if coord[0] != 'E':
+                raise ValueError("First coordinate must be 'E'")
+    else:
+        coord = 'E'
+
     ax1 = QcMollweideAxes(fig, rect, coord=coord)
     fig.add_axes(ax1)
 
@@ -50,8 +61,9 @@ def mollview(
         pixfunc.remove_monopole(map, gal_cut=gal_cut)
 
     img = ax1.projmap(map, vmin=min, vmax=max, coord=coord)
-    
-    ax1.set_title(title)
+
+    if title is not None:
+        ax1.set_title(title)
 
     if return_projected_map:
         return img
