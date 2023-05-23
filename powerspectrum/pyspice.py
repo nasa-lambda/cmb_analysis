@@ -246,11 +246,11 @@ def _correct_xi_from_mask(xi, xi_mask):
         ncor = len(xi)
 
     if ncmask == 3:
-        kindex = np.array([0, 1, 1, 2, 2, 1, 2, 2, 1], dtype=np.int)
+        kindex = np.array([0, 1, 1, 2, 2, 1, 2, 2, 1], dtype=int)
     elif ncmask == 4:
-        kindex = np.array([0, 1, 1, 2, 2, 1, 3, 3, 1], dtype=np.int)
+        kindex = np.array([0, 1, 1, 2, 2, 1, 3, 3, 1], dtype=int)
     else:
-        kindex = np.zeros(9, dtype=np.int)
+        kindex = np.zeros(9, dtype=int)
 
     ncountbinrm = np.zeros(9)
     xi_final = np.empty_like(xi)
@@ -756,7 +756,7 @@ def _cumul_simpson(theta, cl, nmax, thetamax, cl_mask=None):
 
     sum1 = np.zeros(nell)
     sum2 = np.zeros(nell)
-    lastn = 2*np.array(np.round(theta/(2.0*step)), dtype=np.int)
+    lastn = 2*np.array(np.round(theta/(2.0*step)), dtype=int)
 
     for j in range(nell):
         if lastn[j] != 0:

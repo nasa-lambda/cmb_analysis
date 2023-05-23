@@ -105,11 +105,11 @@ def _uv2pix(c, res=6):
 
     i = x * num_pix_side
     i[i > 2**res1-1] = 2**res1 - 1
-    i = np.array(i, dtype=np.int)
+    i = np.array(i, dtype=int)
 
     j = y * num_pix_side
     j[j > 2**res1-1] = 2**res1 - 1
-    j = np.array(j, dtype=np.int)
+    j = np.array(j, dtype=int)
     
     fij = np.empty([npts, 3])
     fij[:, 0] = face
@@ -151,9 +151,9 @@ def _axisxy(c):
         c1 = np.array([c.y.value])
         c2 = np.array([c.z.value])
 
-    abs_yx = np.ones_like(c0, dtype=np.float)*np.inf
-    abs_zx = np.ones_like(c0, dtype=np.float)*np.inf
-    abs_zy = np.ones_like(c0, dtype=np.float)*np.inf
+    abs_yx = np.ones_like(c0, dtype=float)*np.inf
+    abs_zx = np.ones_like(c0, dtype=float)*np.inf
+    abs_zy = np.ones_like(c0, dtype=float)*np.inf
 
     g = c0 != 0
     abs_yx[g] = np.abs(c1[g]/c0[g])
@@ -248,10 +248,10 @@ def _fij2pix(fij, res):
 
     n = len(fij)
 
-    pixel_1 = np.zeros(n, dtype=np.int)
+    pixel_1 = np.zeros(n, dtype=int)
 
-    i = np.array(fij[:, 1], dtype=np.int)
-    j = np.array(fij[:, 2], dtype=np.int)
+    i = np.array(fij[:, 1], dtype=int)
+    j = np.array(fij[:, 2], dtype=int)
 
     num_pix_face = 4**(res-1)
 
@@ -263,7 +263,7 @@ def _fij2pix(fij, res):
 
     pixel = fij[:, 0]*num_pix_face + pixel_1
 
-    return np.array(pixel, dtype=np.int)
+    return np.array(pixel, dtype=int)
 
 def _incube(alpha, beta):
 
@@ -393,8 +393,8 @@ def _pix2fij(pixel, res=6):
 
     pow_2 = 2**np.arange(16)
 
-    i = np.zeros(n, dtype=np.int)
-    j = np.zeros(n, dtype=np.int)
+    i = np.zeros(n, dtype=int)
+    j = np.zeros(n, dtype=int)
 
     for bit in range(res):
         i = i | (pow_2[bit] * (1 & fpix))
@@ -500,12 +500,12 @@ def _xyaxis(nface, xi, eta):
 
     n = np.size(nface)
 
-    nface_0 = np.array(nface == 0, dtype=np.int)
-    nface_1 = np.array(nface == 1, dtype=np.int)
-    nface_2 = np.array(nface == 2, dtype=np.int)
-    nface_3 = np.array(nface == 3, dtype=np.int)
-    nface_4 = np.array(nface == 4, dtype=np.int)
-    nface_5 = np.array(nface == 5, dtype=np.int)
+    nface_0 = np.array(nface == 0, dtype=int)
+    nface_1 = np.array(nface == 1, dtype=int)
+    nface_2 = np.array(nface == 2, dtype=int)
+    nface_3 = np.array(nface == 3, dtype=int)
+    nface_4 = np.array(nface == 4, dtype=int)
+    nface_5 = np.array(nface == 5, dtype=int)
 
     row0 = eta * (nface_5 - nface_0) + xi * (nface_4 - nface_2) + \
            (nface_1 - nface_3)
@@ -781,8 +781,8 @@ def get_8_neighbors(pixel, res, four_neighbors=False):
     two14 = 2**14
     two28 = 2**28
 
-    ixtab = np.zeros(128, dtype=np.int)
-    iytab = np.zeros(128, dtype=np.int)
+    ixtab = np.zeros(128, dtype=int)
+    iytab = np.zeros(128, dtype=int)
 
     bit_table_set(ixtab, iytab)
     pixels_per_face = (2**(res-1)) ** 2
@@ -812,7 +812,7 @@ def get_8_neighbors(pixel, res, four_neighbors=False):
     ix *= distance
     iy *= distance
 
-    neighbors = np.zeros(4 + 4*eight_neighbors, dtype=np.int)
+    neighbors = np.zeros(4 + 4*eight_neighbors, dtype=int)
 
     #Calculate coordinates of each neighbor, check for edges, and return pixel number
     #in appropriate array element
@@ -1094,11 +1094,11 @@ def _rastr(pixel, res=6, face=False, sixpack=False, data=-1, bad_pixval=0.0):
 
     len0 = i0 * cube_side
 
-    idx = fij[:, 0].astype(np.int)
+    idx = fij[:, 0].astype(int)
 
     x_out = offx[idx] * cube_side + fij[:, 1]
-    x_out = (len0 - (x_out+1)).astype(np.int)
-    y_out = (offy[idx] * cube_side + fij[:, 2]).astype(np.int)
+    x_out = (len0 - (x_out+1)).astype(int)
+    y_out = (offy[idx] * cube_side + fij[:, 2]).astype(int)
 
     if len(data) != 1:
         thrd = ndata // npix
@@ -1198,11 +1198,11 @@ def _uv2proj(uvec, proj, sz_proj):
     if proj.upper() == 'A':
         den = np.sqrt(1.0 + np.cos(lat)*np.cos(lon / 2.0))
 
-        proj_x = half_l - np.fix(half_l * (np.cos(lat)*np.sin(lon/2) / den)).astype(np.int)
-        proj_y = half_h + np.fix(half_h * (np.sin(lat) / den)).astype(np.int)
+        proj_x = half_l - np.fix(half_l * (np.cos(lat)*np.sin(lon/2) / den)).astype(int)
+        proj_y = half_h + np.fix(half_h * (np.sin(lat) / den)).astype(int)
     elif proj.upper() == 'S':
-        proj_x = half_l - np.fix(half_l * lon * np.cos(lat) / np.pi).astype(np.int)
-        proj_y = half_h + np.fix(half_h * lat / (np.pi/2)).astype(np.int)
+        proj_x = half_l - np.fix(half_l * lon * np.cos(lat) / np.pi).astype(int)
+        proj_y = half_h + np.fix(half_h * lat / (np.pi/2)).astype(int)
     elif proj.upper() == 'M':
         pass
     elif proj.upper() == 'P':
@@ -1210,8 +1210,8 @@ def _uv2proj(uvec, proj, sz_proj):
         sgn = np.sign(lat)
         fac2 = 1 - (sgn / 2)
 
-        proj_x = fac2 * half_l - sgn * np.fix(0.5 * half_l * fac1 * np.sin(lon)).astype(np.int)
-        proj_y = half_h - np.fix(half_h * fac1 * np.cos(lon)).astype(np.int)
+        proj_x = fac2 * half_l - sgn * np.fix(0.5 * half_l * fac1 * np.sin(lon)).astype(int)
+        proj_y = half_h - np.fix(half_h * fac1 * np.cos(lon)).astype(int)
     else:
         raise ValueError("Invalid projection string entered")
 

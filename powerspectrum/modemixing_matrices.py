@@ -248,7 +248,7 @@ def _get_wEBlm(window_scal, lmax=None, maps=False):
     wlm = H.map2alm(window_scal, lmax=lmax)
 
     n = len(wlm)
-    wEBlm = np.empty([5, n], dtype=np.complex)
+    wEBlm = np.empty([5, n], dtype=complex)
     wEBlm[0, :] = -wlm
 
     wlm_tmp = H.map2alm_spin(window_vect, 1, lmax=lmax)
@@ -439,9 +439,9 @@ def _calc_Mpol(comm, wEBlm, lmax=None, cl_type='pseudo', verbose=True):
             wEBlm_tmp = wEBlm[:, idx]
 
             # Calculate the correct index in the Jp and Jm terms
-            idx_l3_0 = np.array(l_tmp - l3min, dtype=np.int)  # Jp0, Jm0
-            idx_l3_1 = np.array(l_tmp - l3min1, dtype=np.int)  # Jp1, Jm1
-            idx_l3_2 = np.array(l_tmp - l3min2, dtype=np.int)  # Jp2, Jm2
+            idx_l3_0 = np.array(l_tmp - l3min, dtype=int)  # Jp0, Jm0
+            idx_l3_1 = np.array(l_tmp - l3min1, dtype=int)  # Jp1, Jm1
+            idx_l3_2 = np.array(l_tmp - l3min2, dtype=int)  # Jp2, Jm2
 
             # When l3min is 0 or 1 and take the whole range, Jp1(Jm1) and/or
             # Jp2(Jm2) get non-zero values when they should be zero (when l3 =
@@ -627,9 +627,9 @@ def _calc_Mcross(comm, wEBlm, lmax=None, cl_type='pseudo', verbose=True):
             # sub array of wEBlm that have valid l (for l = l3)
             wEBlm_tmp = wEBlm[:, idx]
 
-            idx_l3_0 = np.array(l_tmp - l3min, dtype=np.int)  # Jp0,Jm0
-            idx_l3_1 = np.array(l_tmp - l3min1, dtype=np.int)  # Jp1,Jm1
-            idx_l3_2 = np.array(l_tmp - l3min2, dtype=np.int)  # Jp2,Jm2
+            idx_l3_0 = np.array(l_tmp - l3min, dtype=int)  # Jp0,Jm0
+            idx_l3_1 = np.array(l_tmp - l3min1, dtype=int)  # Jp1,Jm1
+            idx_l3_2 = np.array(l_tmp - l3min2, dtype=int)  # Jp2,Jm2
 
             # Subsets of the subset. When l3min is 0 or 1 and take the whole
             # range, Jp1(Jm1) and/or Jp2(Jm2) get non-zero values when
