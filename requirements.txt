@@ -1,0 +1,5 @@
+Numpy
+Scipy
+Astropy
+Healpy
+Mpi4py

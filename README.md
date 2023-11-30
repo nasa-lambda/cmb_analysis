@@ -10,6 +10,11 @@ There are several Python modules needed in order to run this code. They are
 * Healpy
 * Mpi4py
 
+To install the project requirements, run the following command:
+```bash
+pip install -r requirements.txt
+```
+
 In addition, the location of the cmb_analysis directory needs to be added to your PYTHONPATH environment variable.
 
 ## Contributing ##
